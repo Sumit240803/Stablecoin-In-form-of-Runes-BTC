@@ -1,0 +1,27 @@
+{
+  "canisters": {
+    "usdb-protocol-backend": {
+      "candid": "src/usdb-protocol-backend/usdb-protocol-backend.did",
+      "package": "usdb-protocol-backend",
+      "type": "rust"
+    },
+    "usdb-protocol-frontend": {
+      "dependencies": [
+        "usdb-protocol-backend"
+      ],
+      "source": [
+        "src/usdb-protocol-frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "usdb-protocol-frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
