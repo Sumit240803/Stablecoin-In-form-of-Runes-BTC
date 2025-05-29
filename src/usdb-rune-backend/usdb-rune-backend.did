@@ -1,14 +1,8 @@
-<<<<<<< HEAD
-service : {
-  "get_owner": () -> (opt principal) query;
-}
-=======
 service : {
   "get_owner": () -> (opt principal) query;
   "burn_usdb": (nat64) -> (nat64);
   "get_my_balance": () -> (nat64) query;
-  "get_total_supply": () -> (nat64) query; // <-- This line is crucial!
+  "get_total_supply": () -> (nat64) query; 
   "greet": (text) -> (text) query;
   "mint_usdb": (nat64) -> (nat64);
 }
->>>>>>> b78945f2f8fc3901c148f1f78deb502b72658671

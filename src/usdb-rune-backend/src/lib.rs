@@ -1,27 +1,20 @@
 use candid::{Decode, Encode};
 use ic_cdk::{api::{time, caller}, query, update};
-use serde::{Deserialize, Serialize}; // For serializing/deserializing structs for storage
+use serde::{Deserialize, Serialize}; 
 
-// --- Data Structures ---
-
-// Represents the amount of USDB. Using u64 for simplicity, but consider u128 or a custom fixed-point type for stablecoins.
 type UsdbAmount = u64;
 
-// A simple representation of a user's balance
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct UserBalance {
     pub principal: candid::Principal,
     pub amount: UsdbAmount,
 }
 
-// --- Canister State ---
-// Using static mut for simplicity during initial development.
-// For production, you MUST use `ic_cdk::storage::stable_memory` or `ic-stable-structures`.
-// We'll migrate to that soon.
 static mut TOTAL_SUPPLY: UsdbAmount = 0;
-static mut USER_BALANCES: Vec<UserBalance> = Vec::new(); // Very inefficient for many users, will replace.
+static mut USER_BALANCES: Vec<UserBalance> = Vec::new();
 
-// --- Public Canister Functions ---
+
 
 #[query]
 fn greet(name: String) -> String {
@@ -92,16 +85,3 @@ fn get_my_balance() -> UsdbAmount {
     }
 }
 
-// --- Canister Lifecycle Hooks (for stable memory, will be detailed later) ---
-
-// This is a minimal example. For a real stablecoin, you need `pre_upgrade` and `post_upgrade`
-// to save and restore state across canister upgrades.
-// #[pre_upgrade]
-// fn pre_upgrade() {
-//    // Save state here
-// }
-//
-// #[post_upgrade]
-// fn post_upgrade() {
-//    // Restore state here
-// }
