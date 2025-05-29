@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "src/usdb-protocol-backend"
+    "src/usdb-rune-backend"
 ]
 resolver = "2"

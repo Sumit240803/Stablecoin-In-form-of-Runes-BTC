@@ -1,25 +1,24 @@
 {
   "canisters": {
-    "usdb-protocol-backend": {
-      "candid": "src/usdb-protocol-backend/usdb-protocol-backend.did",
-      "package": "usdb-protocol-backend",
+    "usdb-rune-backend": {
+      "candid": "src/usdb-rune-backend/usdb-rune-backend.did",
+      "package": "usdb-rune-backend",
       "type": "rust"
     },
-    "usdb-protocol-frontend": {
+    "usdb-rune-frontend": {
       "dependencies": [
-        "usdb-protocol-backend"
+        "usdb-rune-backend"
       ],
       "source": [
-        "src/usdb-protocol-frontend/dist"
+        "src/usdb-rune-frontend/dist"
       ],
       "type": "assets",
-      "workspace": "usdb-protocol-frontend"
+      "workspace": "usdb-rune-frontend"
     }
   },
   "defaults": {
     "build": {
-      "args": "",
-      "packtool": ""
+      "args": "--release"
     }
   },
   "output_env_file": ".env",

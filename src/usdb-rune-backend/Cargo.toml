@@ -1,0 +1,18 @@
+[package]
+name = "usdb-rune-backend"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ic-cdk = "0.13.1"
+ic-cdk-macros = "0.13.1"
+candid = "0.10.14"
+serde = { version = "1.0", features = ["derive"] }
+
+
+
+
+
