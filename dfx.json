@@ -1,3 +1,22 @@
+<<<<<<< HEAD
+{
+  "canisters": {
+    "usdb-rune-backend": {
+      "candid": "src/usdb-rune-backend/usdb-rune-backend.did",
+      "package": "usdb-rune-backend",
+      "type": "rust"
+    }
+ 
+  },
+  "defaults": {
+    "build": {
+      "args": "--release"
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
+=======
 {
   "canisters": {
     "usdb-rune-backend": {
@@ -14,3 +33,4 @@
   "output_env_file": ".env",
   "version": 1
 }
+>>>>>>> b78945f2f8fc3901c148f1f78deb502b72658671
