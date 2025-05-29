@@ -4,17 +4,8 @@
       "candid": "src/usdb-rune-backend/usdb-rune-backend.did",
       "package": "usdb-rune-backend",
       "type": "rust"
-    },
-    "usdb-rune-frontend": {
-      "dependencies": [
-        "usdb-rune-backend"
-      ],
-      "source": [
-        "src/usdb-rune-frontend/dist"
-      ],
-      "type": "assets",
-      "workspace": "usdb-rune-frontend"
     }
+ 
   },
   "defaults": {
     "build": {
