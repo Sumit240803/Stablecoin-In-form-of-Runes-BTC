@@ -1,27 +1,13 @@
-<<<<<<< HEAD
 {
   "canisters": {
     "usdb-rune-backend": {
       "candid": "src/usdb-rune-backend/usdb-rune-backend.did",
       "package": "usdb-rune-backend",
       "type": "rust"
-    }
- 
-  },
-  "defaults": {
-    "build": {
-      "args": "--release"
-    }
-  },
-  "output_env_file": ".env",
-  "version": 1
-}
-=======
-{
-  "canisters": {
-    "usdb-rune-backend": {
-      "candid": "src/usdb-rune-backend/usdb-rune-backend.did",
-      "package": "usdb-rune-backend",
+    },
+    "price-oracle-canister":{
+      "candid": "src/price-oracle-canister/price-oracle-canister.did",
+      "package": "price-oracle-canister",
       "type": "rust"
     }
   },
@@ -33,4 +19,3 @@
   "output_env_file": ".env",
   "version": 1
 }
->>>>>>> b78945f2f8fc3901c148f1f78deb502b72658671

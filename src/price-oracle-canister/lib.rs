@@ -1,1 +1,0 @@
-//this canister will be used for HTTPS outcalls for BTC price feed 
