@@ -1,5 +1,6 @@
 [workspace]
 members = [
-    "src/usdb-rune-backend"
+    "src/usdb-rune-backend",
+    "src/price-oracle-canister"
 ]
 resolver = "2"
