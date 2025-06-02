@@ -1,14 +1,14 @@
 use std::cell::Cell;
-use crate::{common::DerivationPath, ecdsa::get_ecdsa_public_key};
+
 use candid::CandidType;
-use ic_cdk::{init, post_upgrade, update};
+use ic_cdk::{init, post_upgrade};
 use serde::Deserialize;
 use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
-use bitcoin::{Address, CompressedPublicKey};
+
 
 mod common;
 mod ecdsa;
-mod p2wpkh;
+mod service;
 #[derive(Clone, Copy,CandidType,Deserialize)]
 pub enum Network {
     Mainnet,
@@ -70,17 +70,3 @@ pub struct SendRequest {
     pub amount_in_satoshi: u64,
 }
 
-#[update]
-pub async fn get_p2wpkh_address() -> String {
-    let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
-
-  
-    let derivation_path = DerivationPath::p2wpkh(0, 0);
-
-    let public_key = get_ecdsa_public_key(&ctx, derivation_path.to_vec_u8_path()).await;
-
-    let public_key = CompressedPublicKey::from_slice(&public_key).unwrap();
-
-  
-    Address::p2wpkh(&public_key, ctx.bitcoin_network).to_string()
-}
