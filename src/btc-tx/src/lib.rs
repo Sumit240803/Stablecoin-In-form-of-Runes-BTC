@@ -9,6 +9,7 @@ use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
 mod common;
 mod ecdsa;
 mod service;
+mod p2wpkh;
 #[derive(Clone, Copy,CandidType,Deserialize)]
 pub enum Network {
     Mainnet,
@@ -26,8 +27,8 @@ pub struct BitcoinContext{
 thread_local! {
     static BTC_CONTEXT: Cell<BitcoinContext> = 
         Cell::new(BitcoinContext {
-            network: BitcoinNetwork::Testnet,
-            bitcoin_network: bitcoin::Network::Testnet,
+            network: BitcoinNetwork::Regtest,
+            bitcoin_network: bitcoin::Network::Regtest,
             key_name: "test_key_1",
         });
     }
