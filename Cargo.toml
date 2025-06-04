@@ -2,6 +2,7 @@
 members = [
     "src/usdb-rune-backend",
     "src/price-oracle-canister",
-    "src/btc-tx",
+    "src/btc-tx"
+   
 ]
 resolver = "2"

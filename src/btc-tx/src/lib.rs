@@ -1,7 +1,8 @@
-use std::cell::Cell;
+use std::{cell::{Cell, RefCell}, collections::HashMap};
 
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use ic_cdk::{init, post_upgrade};
+
 use serde::Deserialize;
 use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
 
@@ -29,10 +30,13 @@ thread_local! {
         Cell::new(BitcoinContext {
             network: BitcoinNetwork::Regtest,
             bitcoin_network: bitcoin::Network::Regtest,
-            key_name: "test_key_1",
+            key_name: "dfx_test_key",
         });
+    static INTENTS : RefCell<HashMap<Principal,(String,u64)>> =RefCell::new(HashMap::new());
     }
-
+/*thread_local! {
+    static INTENTS : RefCell<HashMap<String,(Principal,u64)>> =RefCell::new(HashMap::new());
+}*/
 fn init_upgrade(network: BitcoinNetwork) {
     let key_name = match network {
         BitcoinNetwork::Regtest => "dfx_test_key",
@@ -70,4 +74,3 @@ pub struct SendRequest {
     pub destination_address: String,
     pub amount_in_satoshi: u64,
 }
-
