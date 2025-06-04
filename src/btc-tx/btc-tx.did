@@ -50,7 +50,7 @@ service : (network) -> {
 
   "get_utxos" : (bitcoin_address) -> (get_utxos_response);
 
-  "get_block_headers" : (start_height : block_height, end_height : opt block_height) -> (get_block_headers_response);
+ 
 
   "get_current_fee_percentiles" : () -> (vec millisatoshi_per_vbyte);
 
