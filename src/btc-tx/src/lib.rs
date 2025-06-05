@@ -13,6 +13,7 @@ mod service;
 mod p2wpkh;
 mod schnorr_api;
 mod p2tr;
+mod user_service;
 #[derive(Clone, Copy,CandidType,Deserialize)]
 pub enum Network {
     Mainnet,
