@@ -11,6 +11,8 @@ mod common;
 mod ecdsa;
 mod service;
 mod p2wpkh;
+mod schnorr_api;
+mod p2tr;
 #[derive(Clone, Copy,CandidType,Deserialize)]
 pub enum Network {
     Mainnet,
@@ -33,6 +35,7 @@ thread_local! {
             key_name: "dfx_test_key",
         });
     static INTENTS : RefCell<HashMap<Principal,(String,u64)>> =RefCell::new(HashMap::new());
+    
     }
 /*thread_local! {
     static INTENTS : RefCell<HashMap<String,(Principal,u64)>> =RefCell::new(HashMap::new());
