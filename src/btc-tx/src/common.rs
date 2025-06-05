@@ -3,7 +3,9 @@ use bitcoin::{
     self, absolute::LockTime, blockdata::witness::Witness, hashes::Hash, transaction::Version,
     Address, Amount, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
 };
+use candid::Principal;
 use ic_cdk::api::management_canister::bitcoin::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
+use tiny_keccak::{Hasher, Sha3};
 
 use std::fmt;
 
@@ -228,3 +230,13 @@ impl fmt::Display for DerivationPath {
         )
     }
 }
+
+/* 
+pub fn generate_derivation_path(principal : &Principal)->Vec<Vec<u8>>{
+    let mut hash = [0u8;32];
+    let mut hasher = Sha3::v256();
+    hasher.update(principal.as_slice());
+    hasher.finalize(&mut hash);
+    vec![hash.to_vec()]
+    
+}*/
