@@ -3,27 +3,33 @@ use bitcoin::{key::Secp256k1, taproot::{TaprootBuilder, TaprootSpendInfo}, Publi
 
 
 
+
+
 pub fn create_taproot_spend_info(
-    internal_key_bytes : &[u8],
-    script_key_bytes : &[u8],
+    internal_key_bytes: &[u8],
+    script_key_bytes: &[u8],
+) -> Result<TaprootSpendInfo, String> {
+    let internal_key = XOnlyPublicKey::from(PublicKey::from_slice(internal_key_bytes).unwrap());
+    
 
-)-> TaprootSpendInfo{
-    let internal_key = XOnlyPublicKey::from_slice(internal_key_bytes).unwrap();
-
-    let spend_script = create_spend_script(script_key_bytes);
+    let spend_script = create_spend_script(script_key_bytes)?;
 
     let secp256k1_engine = Secp256k1::new();
+
     TaprootBuilder::new()
-    .add_leaf(0, spend_script.clone())
-    .expect("adding leaf should work")
-    .finalize(&secp256k1_engine, internal_key)
-    .expect("finalizing taproot builder should work")
+        .add_leaf(0, spend_script.clone())
+        .map_err(|e| format!("Failed to add leaf: {:?}", e))?
+        .finalize(&secp256k1_engine, internal_key)
+        .map_err(|e| format!("Failed to finalize taproot builder: {:?}", e))
 }
 
-pub fn create_spend_script(script_key_bytes : &[u8])->ScriptBuf{
+pub fn create_spend_script(script_key_bytes: &[u8]) -> Result<ScriptBuf, String> {
     let script_key = XOnlyPublicKey::from(PublicKey::from_slice(script_key_bytes).unwrap());
-    bitcoin::blockdata::script::Builder::new()
-    .push_x_only_key(&script_key)
-    .push_opcode(bitcoin::blockdata::opcodes::all::OP_CHECKSIG)
-    .into_script()
+
+    Ok(
+        bitcoin::blockdata::script::Builder::new()
+            .push_x_only_key(&script_key)
+            .push_opcode(bitcoin::blockdata::opcodes::all::OP_CHECKSIG)
+            .into_script(),
+    )
 }

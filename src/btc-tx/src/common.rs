@@ -3,9 +3,9 @@ use bitcoin::{
     self, absolute::LockTime, blockdata::witness::Witness, hashes::Hash, transaction::Version,
     Address, Amount, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid,
 };
-use candid::Principal;
+//use candid::Principal;
 use ic_cdk::api::management_canister::bitcoin::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
-use tiny_keccak::{Hasher, Sha3};
+//use tiny_keccak::{Hasher, Sha3};
 
 use std::fmt;
 

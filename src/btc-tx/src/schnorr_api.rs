@@ -93,32 +93,44 @@ thread_local! {
     static SCHNORR_KEY_CACHE : RefCell<HashMap<DerivationPath,SchnorrKey>> = RefCell::new(HashMap::new());
 }
 
-
 pub async fn get_schnorr_public_key(
     ctx: &BitcoinContext,
     derivation_path: Vec<Vec<u8>>,
-) -> Vec<u8> {
-    // Retrieve and return already stored public key
+) -> Result<Vec<u8>, String> {
+    // Return cached key if available
     if let Some(key) = SCHNORR_KEY_CACHE.with_borrow(|map| map.get(&derivation_path).cloned()) {
-        return key;
+        ic_cdk::println!("Using cached key: {:?}", key);
+        return Ok(key);
     }
 
-    let (response,) = schnorr_public_key(SchnorrPublicKeyArgument{
+    ic_cdk::println!("Fetching new key for path: {:?}", derivation_path);
+    
+    let arg = SchnorrPublicKeyArgument {
         canister_id: None,
         derivation_path: derivation_path.clone(),
         key_id: SchnorrKeyId {
             name: ctx.key_name.to_string(),
             algorithm: SchnorrAlgorithm::Bip340secp256k1,
         },
-    })
-    .await
-    .unwrap();
+    };
+
+    ic_cdk::println!("Sending argument: {:?}", arg);
+
+    let (response,) = schnorr_public_key(arg)
+        .await
+        .map_err(|e| format!("Schnorr key fetch failed: {:?}", e))?;
+
+    ic_cdk::println!("Raw response: {:?}", response);
+    ic_cdk::println!("Public key length: {}", response.public_key.len());
+    ic_cdk::println!("Public key bytes: {:?}", response.public_key);
+
     let public_key = response.public_key;
 
-    // Cache the public key
-    SCHNORR_KEY_CACHE.with_borrow_mut(|map| {
+  
+
+    SCHNORR_KEY_CACHE.with_borrow_mut(|map: &mut HashMap<Vec<Vec<u8>>, Vec<u8>>| {
         map.insert(derivation_path, public_key.clone());
     });
 
-    public_key
+    Ok(public_key)
 }
