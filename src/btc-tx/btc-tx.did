@@ -39,6 +39,7 @@ type get_block_headers_response = record {
   tip_height : block_height;
   block_headers : vec block_header;
 };
+type ResultString = variant { ok : text; err : text };
 
 service : (network) -> {
  
@@ -62,6 +63,6 @@ service : (network) -> {
       amount_in_satoshi : satoshi;
     }
   ) -> (transaction_id);
-
+  "get_p2tr_script_path_address" : () ->(ResultString);
  
 };

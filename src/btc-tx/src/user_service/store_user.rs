@@ -1,4 +1,4 @@
-//Assuming BTC transaction successfully sent from user to the deposit address
+/*//Assuming BTC transaction successfully sent from user to the deposit address
 
 use candid::Principal;
 use ic_cdk::{caller, update};
@@ -12,3 +12,4 @@ pub fn store_intent(address :String, amount : u64){
         intents.borrow_mut().insert(principal, (address,amount))
     });
 }
+*/
