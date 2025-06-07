@@ -64,5 +64,6 @@ service : (network) -> {
     }
   ) -> (transaction_id);
   "get_p2tr_script_path_address" : () ->(ResultString);
+  "get_deposit_address" : ()->(text)
  
 };
