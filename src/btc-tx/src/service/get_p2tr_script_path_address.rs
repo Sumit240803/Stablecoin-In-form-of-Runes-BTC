@@ -1,4 +1,4 @@
-use bitcoin::{Address, XOnlyPublicKey};
+use bitcoin::{Address};
 use candid::CandidType;
 use ic_cdk::update;
 use serde::Deserialize;
