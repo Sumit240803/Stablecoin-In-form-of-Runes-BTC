@@ -7,6 +7,7 @@ use serde::Deserialize;
 use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
 
 
+
 mod common;
 mod ecdsa;
 mod service;
@@ -14,6 +15,7 @@ mod p2wpkh;
 mod schnorr_api;
 mod p2tr;
 mod user_service;
+mod tags;
 #[derive(Clone, Copy,CandidType,Deserialize)]
 pub enum Network {
     Mainnet,
@@ -26,6 +28,13 @@ pub struct BitcoinContext{
     pub network : BitcoinNetwork,
     pub bitcoin_network : bitcoin::Network,
     pub key_name : &'static str,
+    pub schnorr_canister: Option<Principal>,
+  
+}
+#[derive(CandidType, Deserialize)]
+pub struct InitArgs{
+    pub network : BitcoinNetwork,
+    pub schnorr_canister : Option<Principal>
 }
 
 thread_local! {
@@ -34,14 +43,17 @@ thread_local! {
             network: BitcoinNetwork::Regtest,
             bitcoin_network: bitcoin::Network::Regtest,
             key_name: "dfx_test_key",
+            schnorr_canister : None,
         });
+
+    
     static INTENTS : RefCell<HashMap<Principal,(String,u64)>> =RefCell::new(HashMap::new());
     
     }
 /*thread_local! {
     static INTENTS : RefCell<HashMap<String,(Principal,u64)>> =RefCell::new(HashMap::new());
 }*/
-fn init_upgrade(network: BitcoinNetwork) {
+fn init_upgrade(network: BitcoinNetwork ,schnorr_canister :Option<Principal>) {
     let key_name = match network {
         BitcoinNetwork::Regtest => "dfx_test_key",
         BitcoinNetwork::Mainnet | BitcoinNetwork::Testnet => "test_key_1",
@@ -58,19 +70,20 @@ fn init_upgrade(network: BitcoinNetwork) {
             network,
             bitcoin_network,
             key_name,
+            schnorr_canister
         })
     });
 }
 
 
 #[init]
-pub fn init(network: BitcoinNetwork) {
-    init_upgrade(network);
+pub fn init(args : InitArgs) {
+    init_upgrade(args.network, args.schnorr_canister);
 }
 
 #[post_upgrade]
-fn upgrade(network: BitcoinNetwork) {
-    init_upgrade(network);
+fn upgrade(args : InitArgs) {
+    init_upgrade(args.network, args.schnorr_canister);
 }
 
 #[derive(candid::CandidType, candid::Deserialize)]

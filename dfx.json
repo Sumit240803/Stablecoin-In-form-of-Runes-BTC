@@ -14,6 +14,17 @@
       "candid" :"src/btc-tx/btc-tx.did",
       "package":"btc-tx",
       "type" : "rust"
+    },
+    "schnorr_canister": {
+      "type": "custom",
+      "candid": "https://github.com/domwoe/schnorr_canister/releases/latest/download/schnorr_canister.did",
+      "wasm": "https://github.com/domwoe/schnorr_canister/releases/latest/download/schnorr_canister.wasm.gz",
+      "remote": {
+        "id": {
+          "ic": "6fwhw-fyaaa-aaaap-qb7ua-cai",
+          "playground": "6fwhw-fyaaa-aaaap-qb7ua-cai"
+        }
+      }
     }
   },
   "defaults": {
