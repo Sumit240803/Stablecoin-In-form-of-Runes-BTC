@@ -39,9 +39,25 @@ type get_block_headers_response = record {
   tip_height : block_height;
   block_headers : vec block_header;
 };
-type ResultString = variant { ok : text; err : text };
+type EtchingArgs = record {
+  divisibility: nat8;
+  symbol: nat32;
+  rune: text;
+  amount: nat;
+  cap: nat;
+  turbo: bool;
+  premine: nat;
+  height: opt record { nat64; nat64 };
+  offset: opt record { nat64; nat64 };
+  fee_rate: opt nat64;
+};
 
-service : (network) -> {
+type ResultString = variant { ok : text; err : text };
+type InitArgs = record{
+  network : network;
+  schnorr_canister : opt principal;
+}
+service : (InitArgs) -> {
  
   
   "get_p2wpkh_address" : () -> (bitcoin_address);
@@ -64,6 +80,7 @@ service : (network) -> {
     }
   ) -> (transaction_id);
   "get_p2tr_script_path_address" : () ->(ResultString);
-  "get_deposit_address" : ()->(text)
+  "get_deposit_address" : ()->(text);
+  "etch_rune": (EtchingArgs)->(text,text);
  
 };

@@ -82,10 +82,10 @@ fn mgmt_canister_id()->CanisterId{
 
 use std::{cell::RefCell, collections::HashMap};
 
-use ic_cdk::api::management_canister::schnorr::{SchnorrKeyId , SchnorrAlgorithm , schnorr_public_key,SchnorrPublicKeyArgument};
+use ic_cdk::api::management_canister::schnorr::{schnorr_public_key, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgument, SignWithSchnorrArgument, SignWithSchnorrResponse};
 
 
-use crate::BitcoinContext;
+use crate::{BitcoinContext, BTC_CONTEXT};
 type DerivationPath = Vec<Vec<u8>>;
 type SchnorrKey = Vec<u8>;
 
@@ -133,4 +133,25 @@ pub async fn get_schnorr_public_key(
     });
 
     Ok(public_key)
+}
+
+
+
+
+pub async fn schnorr_sign(message: Vec<u8>, derivation_path: Vec<Vec<u8>>) -> Vec<u8> {
+    let ctx = BTC_CONTEXT.with(|state| state.get());
+    
+    ic_cdk::call::<(SignWithSchnorrArgument,), (SignWithSchnorrResponse,)>(
+        *ctx.schnorr_canister.as_ref().unwrap(),
+        "sign_with_schnorr",
+        (SignWithSchnorrArgument {
+            message,
+            derivation_path,
+            key_id : SchnorrKeyId { algorithm: SchnorrAlgorithm::Bip340secp256k1, name: ctx.key_name.to_string() },
+        },),
+    )
+    .await
+    .unwrap()
+    .0
+    .signature
 }
