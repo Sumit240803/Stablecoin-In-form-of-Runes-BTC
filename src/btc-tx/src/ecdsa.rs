@@ -42,13 +42,12 @@ pub async fn get_ecdsa_public_key(ctx: &BitcoinContext, derivation_path: Vec<Vec
 
     public_key
 }
-
 pub async fn sign_with_ecdsa(
     key_name: String,
     derivation_path: Vec<Vec<u8>>,
     message_hash: Vec<u8>,
-) -> Signature {
-    let (response,) = management_canister::ecdsa::sign_with_ecdsa(SignWithEcdsaArgument {
+) -> Result<Signature, String> {
+    match management_canister::ecdsa::sign_with_ecdsa(SignWithEcdsaArgument {
         message_hash,
         derivation_path,
         key_id: EcdsaKeyId {
@@ -57,11 +56,15 @@ pub async fn sign_with_ecdsa(
         },
     })
     .await
-    .unwrap();
-    let signature = response.signature;
-
-    Signature::from_compact(&signature).unwrap()
+    {
+        Ok((response,)) => {
+            Signature::from_compact(&response.signature)
+                .map_err(|e| format!("Signature parse error: {:?}", e))
+        }
+        Err((code, msg)) => Err(format!("ECDSA call failed: {:?} - {}", code, msg)),
+    }
 }
+
 
 
 pub async fn mock_sign_with_ecdsa(

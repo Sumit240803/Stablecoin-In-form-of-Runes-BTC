@@ -33,7 +33,19 @@ pub async fn send_from_p2wpkh_address(request : SendRequest)->String{
 
     let fee_per_byte = get_fee_per_byte(&ctx).await;
     let (transaction,prevouts) = p2wpkh::build_transaction(&ctx, &own_public_key, &own_address, own_utxos, &dst_address, request.amount_in_satoshi, fee_per_byte).await;
-    let signed_transactions = p2wpkh::sign_transaction(&ctx, &own_public_key, &own_address, transaction, &prevouts, derivation_path.to_vec_u8_path(), sign_with_ecdsa).await;
+let signed_transactions = p2wpkh::sign_transaction(
+    &ctx,
+    &own_public_key,
+    &own_address,
+    transaction,
+    &prevouts,
+    derivation_path.to_vec_u8_path(),
+    |key_name, path, hash| async move {
+        sign_with_ecdsa(key_name, path, hash)
+            .await
+            .expect("Failed to sign with ECDSA")
+    },
+).await;
 
     bitcoin_send_transaction(SendTransactionRequest{
         network : ctx.network,

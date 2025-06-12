@@ -1,19 +1,11 @@
 use std::str::FromStr;
 
 use bitcoin::{
-    absolute::LockTime,
-    consensus,
-    hashes::{sha256, Hash},
-    opcodes,
-    script::{Builder, PushBytes},
-    secp256k1::{
+    absolute::LockTime, consensus, hashes::{sha256, Hash}, opcodes, script::{Builder, PushBytes}, secp256k1::{
         constants::SCHNORR_SIGNATURE_SIZE, schnorr, Message, PublicKey, Secp256k1, XOnlyPublicKey,
-    },
-    sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType},
-    taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder},
-    Address, Amount, FeeRate, OutPoint, Script, ScriptBuf, Sequence, Transaction, TxIn,
-    TxOut, Txid, Witness,
+    }, sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType}, taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder}, transaction::Version, Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness
 };use candid::CandidType;
+
 
 use hex::ToHex;
 use ic_cdk::{api::management_canister::bitcoin::{BitcoinNetwork, Utxo}, update};
@@ -355,7 +347,7 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
      */
 
     let input = utxos_to_spend
-        .into_iter()
+        .iter()
         .map(|utxo| TxIn {
             previous_output: OutPoint::new(
                 Txid::from_raw_hash(Hash::from_slice(&utxo.outpoint.txid).unwrap()),
@@ -384,22 +376,31 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
             .unwrap();
     ic_cdk::println!("commit fee: {}\nreveal fee: {}", commit_fee, reveal_fee);
     commit_tx.output[0].value = Amount::from_sat(total_spent - commit_fee.to_sat_per_kwu());
-    let commit_tx_cache = SighashCache::new(commit_tx.clone());
+    
+    let mut commit_tx_cache = SighashCache::new(commit_tx.clone());
     for (index, input) in commit_tx.input.iter_mut().enumerate() {
+        let utxo_value_set = utxos_to_spend[index].value;
         let sighash = commit_tx_cache
-            .legacy_signature_hash(
+            .p2wpkh_signature_hash(
                 index,
                 &caller_address.script_pubkey(),
-                SIG_HASH_TYPE.to_u32(),
+                Amount::from_sat(utxo_value_set),
+                SIG_HASH_TYPE
+                
             )
             .unwrap();
-        /*let sighash = commit_tx_cache.p2wpkh_signature_hash(
-            index,
-            &caller_address.script_pubkey(),
-            Amount::from_sat(utxos_to_spend),
-            SIG_HASH_TYPE
-        ).unwrap();*/
-        let signature = sign_with_ecdsa(ctx.key_name.to_owned(),derivation_path.clone(),sighash.to_byte_array().to_vec()).await;
+        let signature =match sign_with_ecdsa(ctx.key_name.to_owned(),derivation_path.clone(),sighash.to_byte_array().to_vec()).await{
+            Ok(sig)=>sig,
+            Err(e)=>{
+                ic_cdk::println!("ECDSA signing failed: {}",e);
+                return (
+    Address::p2wpkh(&CompressedPublicKey::from_slice(ecdsa_public_key).unwrap(),network), // or any fallback address
+    Transaction { input: vec![], output: vec![], lock_time: LockTime::ZERO, version: Version(2) },
+    Transaction { input: vec![], output: vec![], lock_time: LockTime::ZERO, version: Version(2) }
+);
+
+            }
+        };
         let compact: [u8; 64] = signature.serialize_compact();
         let signature_bytes = compact.to_vec();
 
@@ -414,6 +415,7 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
 
         
     }
+    
     let (vout, _) = commit_tx
         .output
         .iter()
@@ -479,6 +481,11 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
     println!("Signautre from slice : {}", sig_);
     let digest = sha256::Hash::hash(&signing_data).to_byte_array();
     let msg = Message::from_digest_slice(&digest).unwrap();
+    ic_cdk::println!("Signature: {:?}", sig_);
+ic_cdk::println!("Digest: {:?}", msg);
+ic_cdk::println!("Public Key: {:?}", schnorr_public_key);
+ic_cdk::println!("Signature valid? {:?}", secp.verify_schnorr(&sig_, &msg, &schnorr_public_key));
+
     assert!(secp
         .verify_schnorr(&sig_, &msg, &schnorr_public_key)
         .is_ok());
