@@ -3,7 +3,7 @@ use std::str::FromStr;
 use bitcoin::{
     absolute::LockTime, consensus, hashes::{sha256, Hash}, opcodes, script::{Builder, PushBytes}, secp256k1::{
         constants::SCHNORR_SIGNATURE_SIZE, schnorr, Message, PublicKey, Secp256k1, XOnlyPublicKey,
-    }, sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType}, taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder}, transaction::Version, Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness
+    }, sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType}, taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder}, transaction::Version, Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence, TapSighash, Transaction, TxIn, TxOut, Txid, Witness
 };use candid::CandidType;
 
 
@@ -465,12 +465,12 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
             TapSighashType::Default,
         )
         .unwrap();
-    let mut hashed_tag = sha256::Hash::hash(b"TapSighash").to_byte_array().to_vec();
-    let mut prefix = hashed_tag.clone();
-    prefix.append(&mut hashed_tag);
-    let signing_data: Vec<_> = prefix.iter().chain(signing_data.iter()).cloned().collect();
-    let schnorr_signature =
-        schnorr_api::schnorr_sign(signing_data.clone(), derivation_path.clone()).await;
+    /*let mut hashed_tag = sha256::Hash::hash(b"TapSighash").to_byte_array().to_vec();
+    let mut prefix = hashed_tag.clone();*/
+    //prefix.append(&mut hashed_tag);
+    //let signing_data: Vec<_> = prefix.iter().chain(signing_data.iter()).cloned().collect();
+    let sig_hash = TapSighash::hash(&signing_data).to_byte_array();
+    let schnorr_signature =schnorr_api::schnorr_sign(sig_hash.to_vec(), derivation_path.to_vec()).await;
     ic_cdk::println!("sig size: {}", schnorr_signature.len());
     ic_cdk::print("Schnorr Signature successful");
     // Verify the signature to be sure that signing works
@@ -479,12 +479,16 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
 
     let sig_ = schnorr::Signature::from_slice(&schnorr_signature).unwrap();
     println!("Signautre from slice : {}", sig_);
-    let digest = sha256::Hash::hash(&signing_data).to_byte_array();
-    let msg = Message::from_digest_slice(&digest).unwrap();
+    //let digest = sha256::Hash::hash(&signing_data).to_byte_array();
+    let msg = Message::from_digest_slice(&sig_hash).unwrap();
     ic_cdk::println!("Signature: {:?}", sig_);
+    //ic_cdk::println!("Digest: {:?}", digest);
 ic_cdk::println!("Digest: {:?}", msg);
 ic_cdk::println!("Public Key: {:?}", schnorr_public_key);
-ic_cdk::println!("Signature valid? {:?}", secp.verify_schnorr(&sig_, &msg, &schnorr_public_key));
+ic_cdk::println!("Signature valid? {:?}",match secp.verify_schnorr(&sig_, &msg, &schnorr_public_key) {
+    Ok(_) => ic_cdk::println!("✅ Signature verified successfully."),
+    Err(e) => ic_cdk::trap(&format!("❌ Signature verification failed: {}", e)),
+});
 
     assert!(secp
         .verify_schnorr(&sig_, &msg, &schnorr_public_key)
