@@ -407,12 +407,17 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
         let der_signature = sec1_to_der(signature_bytes);
         let mut sig_with_hashtype = der_signature;
         sig_with_hashtype.push(SIG_HASH_TYPE.to_u32() as u8);
+        /*
         input.script_sig = ScriptBuf::builder()
-            .push_slice::<&PushBytes>(sig_with_hashtype.as_slice().try_into().unwrap())
-            .push_slice::<&PushBytes>(ecdsa_public_key.try_into().unwrap())
-            .into_script();
-        input.witness.clear();
-
+        .push_slice::<&PushBytes>(sig_with_hashtype.as_slice().try_into().unwrap())
+        .push_slice::<&PushBytes>(ecdsa_public_key.try_into().unwrap())
+        .into_script();
+    input.witness.clear();
+    */
+        input.script_sig = ScriptBuf::new();
+        input.witness.push(sig_with_hashtype);
+        input.witness.push(ecdsa_public_key.to_vec());
+        
         
     }
     
