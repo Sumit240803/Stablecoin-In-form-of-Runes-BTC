@@ -52,9 +52,10 @@ pub async fn etch_rune(mut args : EtchingArgs)->(String,String){
     )
     .await;
     let commit_txid = send_bitcoin_transaction(commit_tx).await;
+    let reveual_txid = send_bitcoin_transaction(reveal_tx).await;
 
 
-    (commit_txid,reveal_tx.compute_txid().encode_hex())
+    (commit_txid,reveual_txid)
 
 
     
@@ -371,11 +372,10 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
     
 
     let sig_bytes = 73;
-    let commit_fee =
-        FeeRate::from_sat_per_vb(fee_rate.to_sat_per_kwu() * commit_tx.vsize() as u64 + sig_bytes)
-            .unwrap();
+    let estimated_vsize = commit_tx.vsize() + utxos_to_spend.len() * sig_bytes / 4;
+let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
     ic_cdk::println!("commit fee: {}\nreveal fee: {}", commit_fee, reveal_fee);
-    commit_tx.output[0].value = Amount::from_sat(total_spent - commit_fee.to_sat_per_kwu());
+    commit_tx.output[0].value = Amount::from_sat(total_spent - commit_fee.to_sat() - reveal_fee.to_sat());
     
     let mut commit_tx_cache = SighashCache::new(commit_tx.clone());
     for (index, input) in commit_tx.input.iter_mut().enumerate() {
@@ -428,7 +428,7 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
     };
     reveal_output.push(TxOut {
         script_pubkey: caller_address.script_pubkey(),
-        value: Amount::from_sat(total_spent - commit_fee.to_sat_per_kwu() - reveal_fee.to_sat()),
+        value: Amount::from_sat(total_spent - commit_fee.to_sat() - reveal_fee.to_sat()),
     });
 
     let mut reveal_tx = Transaction {
@@ -485,13 +485,15 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
     //ic_cdk::println!("Digest: {:?}", digest);
 ic_cdk::println!("Digest: {:?}", msg);
 ic_cdk::println!("Public Key: {:?}", schnorr_public_key);
-ic_cdk::println!("Signature valid? {:?}",match secp.verify_schnorr(&sig_, &msg, &schnorr_public_key) {
+let x_pub_key = XOnlyPublicKey::from(schnorr_public_key);
+println!("x_only {:?}",x_pub_key.serialize());
+ic_cdk::println!("Signature valid? {:?}",match secp.verify_schnorr(&sig_, &msg, &x_pub_key) {
     Ok(_) => ic_cdk::println!("✅ Signature verified successfully."),
     Err(e) => ic_cdk::trap(&format!("❌ Signature verification failed: {}", e)),
 });
 
     assert!(secp
-        .verify_schnorr(&sig_, &msg, &schnorr_public_key)
+        .verify_schnorr(&sig_, &msg, &x_pub_key)
         .is_ok());
 
     let witness = sighash_cache.witness_mut(0).unwrap();
