@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use bitcoin::{
-    absolute::LockTime, consensus, hashes::{sha256, Hash}, opcodes, script::{Builder, PushBytes}, secp256k1::{
+    absolute::LockTime, consensus, hashes::{ Hash}, opcodes, script::{Builder}, secp256k1::{
         constants::SCHNORR_SIGNATURE_SIZE, schnorr, Message, PublicKey, Secp256k1, XOnlyPublicKey,
     }, sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType}, taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder}, transaction::Version, Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence, TapSighash, Transaction, TxIn, TxOut, Txid, Witness
 };use candid::CandidType;
@@ -373,13 +373,19 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
 
     let sig_bytes = 73;
     let estimated_vsize = commit_tx.vsize() + utxos_to_spend.len() * sig_bytes / 4;
+    println!("Utxo spend length : {:?}", utxos_to_spend.len());
 let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
     ic_cdk::println!("commit fee: {}\nreveal fee: {}", commit_fee, reveal_fee);
     commit_tx.output[0].value = Amount::from_sat(total_spent - commit_fee.to_sat() - reveal_fee.to_sat());
     
     let mut commit_tx_cache = SighashCache::new(commit_tx.clone());
+    println!("Commit TX Cache : {:?}", commit_tx_cache);
+    println!("Entering The Loop  [Line : 383]");
     for (index, input) in commit_tx.input.iter_mut().enumerate() {
+        println!("Loop Entered [Line 385]");
+        println!("Running for index : {:?}",index);
         let utxo_value_set = utxos_to_spend[index].value;
+        println!("Value set for UTXO : {}",utxo_value_set);
         let sighash = commit_tx_cache
             .p2wpkh_signature_hash(
                 index,
@@ -389,6 +395,8 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
                 
             )
             .unwrap();
+        println!("SigHash (Inside the loop) : {}",sighash);
+        ic_cdk::println!("Before signing: {}", ic_cdk::api::canister_balance());
         let signature =match sign_with_ecdsa(ctx.key_name.to_owned(),derivation_path.clone(),sighash.to_byte_array().to_vec()).await{
             Ok(sig)=>sig,
             Err(e)=>{
@@ -401,8 +409,10 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
 
             }
         };
+        ic_cdk::println!("After signing: {}", ic_cdk::api::canister_balance());
         let compact: [u8; 64] = signature.serialize_compact();
         let signature_bytes = compact.to_vec();
+        println!("Signature Compact {:?}",signature_bytes);
 
         let der_signature = sec1_to_der(signature_bytes);
         let mut sig_with_hashtype = der_signature;
@@ -417,7 +427,7 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
         input.script_sig = ScriptBuf::new();
         input.witness.push(sig_with_hashtype);
         input.witness.push(ecdsa_public_key.to_vec());
-        
+        println!("Last line of Loop reached");
         
     }
     
