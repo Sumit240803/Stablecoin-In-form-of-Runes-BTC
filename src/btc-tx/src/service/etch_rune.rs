@@ -42,6 +42,8 @@ pub async fn etch_rune(mut args : EtchingArgs)->(String,String){
     }
     let utxos = get_utxos(caller_p2wpkh_address.clone()).await;
     check_etching(utxos.tip_height, &args);
+    ic_cdk::println!("Etching Checked");
+    ic_cdk::println!("Signing and building etching transaction.....");
     let (_commit_tx_address, commit_tx, reveal_tx) = build_and_sign_etching_transaction(
         &derivation_path.to_vec_u8_path(),
         &utxos.utxos,
@@ -116,10 +118,13 @@ pub async fn build_and_sign_etching_transaction(
     let SpacedRune { rune, spacers } = SpacedRune::from_str(&etching_args.rune).unwrap();
     let symbol = char::from_u32(etching_args.symbol).unwrap();
     let secp256k1 = Secp256k1::new();
+    ic_cdk::println!("schnorr_public_key.len() = {}", schnorr_public_key.len());
+    let x_only_bytes = &schnorr_public_key[1..];
 
-    let schnorr_public_key: XOnlyPublicKey =
-        PublicKey::from_slice(schnorr_public_key).unwrap().into();
-    ic_cdk::println!("Schnorr Public Key Line[122] : {:?}",schnorr_public_key);
+let schnorr_public_key: XOnlyPublicKey =
+    XOnlyPublicKey::from_slice(x_only_bytes).expect("Invalid x-only pubkey");
+
+ic_cdk::println!("Schnorr Public Key Line[127] : {:?}", schnorr_public_key);
 
     /*This is used in Bitcoin Runes / Ordinals / inscriptions to mark the start of a specific protocol payload 
     (like "ord" protocol for inscriptions or runes), so that when parsing the script later, tools can recognize 
@@ -502,10 +507,10 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
     //ic_cdk::println!("Digest: {:?}", digest);
 ic_cdk::println!("Digest: {:?}", msg);
 ic_cdk::println!("Public Key: {:?}", schnorr_public_key);
-let x_pub_key = XOnlyPublicKey::from(schnorr_public_key);
 
-ic_cdk::println!("x_only {:?}",x_pub_key.serialize());
-let verified = secp.verify_schnorr(&sig_, &msg, &x_pub_key).is_ok();
+
+
+let verified = secp.verify_schnorr(&sig_, &msg, &schnorr_public_key).is_ok();
 ic_cdk::println!("Signature Valid? {:?}",verified);
 /*ic_cdk::println!("Signature valid? {:?}",match secp.verify_schnorr(&sig_, &msg, &x_pub_key) {
     Ok(_) => ic_cdk::println!("✅ Signature verified successfully."),
