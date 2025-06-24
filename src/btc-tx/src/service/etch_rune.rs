@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bitcoin::{
     absolute::LockTime, consensus, hashes::Hash, opcodes, script::Builder, secp256k1::{
-        constants::SCHNORR_SIGNATURE_SIZE,  schnorr, Message, PublicKey, Secp256k1, XOnlyPublicKey
+        constants::SCHNORR_SIGNATURE_SIZE,  schnorr, Message,  Secp256k1, XOnlyPublicKey
     }, sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType}, taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder}, transaction::Version, Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence, TapSighash, Transaction, TxIn, TxOut, Txid, Witness
 };use candid::CandidType;
 
@@ -500,11 +500,11 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
     ic_cdk::print("Verification - secp");
 
     let sig_ = schnorr::Signature::from_slice(&schnorr_signature).unwrap();
-    ic_cdk::println!("Signautre from slice : {}", sig_);
     //let digest = sha256::Hash::hash(&signing_data).to_byte_array();
-    let msg = Message::from_digest_slice(&sig_hash).unwrap();
     ic_cdk::println!("Signature: {:?}", sig_);
+    ic_cdk::println!("Signautre from slice : {}", sig_);
     //ic_cdk::println!("Digest: {:?}", digest);
+    let msg = Message::from_digest_slice(&sig_hash).unwrap();
 ic_cdk::println!("Digest: {:?}", msg);
 ic_cdk::println!("Public Key: {:?}", schnorr_public_key);
 
@@ -576,8 +576,6 @@ pub fn sec1_to_der(sec1_signature: Vec<u8>) -> Vec<u8> {
 }
 
 
-
-
 pub fn build_reveal_transaction(
     commit_input_index: usize,
     control_block: &ControlBlock,
@@ -586,18 +584,12 @@ pub fn build_reveal_transaction(
     input: Vec<OutPoint>,
     script: &Script,
 ) -> (Transaction, Amount) {
+    ic_cdk::println!("🔧 Building reveal transaction");
+    ic_cdk::println!("📥 Number of inputs: {}", input.len());
+    ic_cdk::println!("📤 Number of outputs: {}", output.len());
+    ic_cdk::println!("💸 Fee rate (sat/kwu): {}", fee_rate.to_sat_per_kwu());
+    ic_cdk::println!("🔢 Commit input index: {}", commit_input_index);
 
-    /*Creates a transaction with:
-
-The provided inputs (usually a dummy UTXO in reveal_input)
-
-The provided outputs (OP_RETURN + possible premine)
-
-Empty witness fields (initially)
-
-sequence set for RBF & confirmation control
-
- */
     let reveal_txn = Transaction {
         input: input
             .into_iter()
@@ -608,14 +600,18 @@ sequence set for RBF & confirmation control
                 sequence: Sequence::from_height(Runestone::COMMIT_CONFIRMATIONS - 1),
             })
             .collect(),
-        output,
+        output: output.clone(),
         lock_time: LockTime::ZERO,
         version: bitcoin::transaction::Version(2),
     };
+
+    ic_cdk::println!("🧾 Reveal transaction (pre-witness): {:?}", reveal_txn);
+
     let fee = {
         let mut reveal_txn_clone = reveal_txn.clone();
         for (current_index, txin) in reveal_txn_clone.input.iter_mut().enumerate() {
             if current_index == commit_input_index {
+                ic_cdk::println!("✍️ Adding witness to commit input at index {}", current_index);
                 txin.witness.push(
                     Signature::from_slice(&[0; SCHNORR_SIGNATURE_SIZE])
                         .unwrap()
@@ -627,26 +623,52 @@ sequence set for RBF & confirmation control
                 txin.witness = Witness::from_slice(&[&[0; SCHNORR_SIGNATURE_SIZE]]);
             }
         }
-        Amount::from_sat(
-            (fee_rate.to_sat_per_kwu() as f64 * reveal_txn_clone.vsize() as f64).round() as u64,
-        )
+        let size = reveal_txn_clone.vsize();
+        let fee_sat = (fee_rate.to_sat_per_kwu() as f64 * size as f64).round() as u64;
+        ic_cdk::println!("📐 Estimated vsize: {}", size);
+        ic_cdk::println!("💰 Calculated fee: {} satoshis", fee_sat);
+        Amount::from_sat(fee_sat)
     };
+
+    ic_cdk::println!("✅ Reveal transaction built successfully");
+
     (reveal_txn, fee)
 }
 
 
-
 pub async fn send_bitcoin_transaction(txn: Transaction) -> String {
+    ic_cdk::println!("🔄 Starting send_bitcoin_transaction");
+    ic_cdk::println!("📦 Raw Transaction: {:?}", txn);
+
+    // Serialize the transaction
     let transaction = bitcoin::consensus::serialize(&txn);
+    ic_cdk::println!("🧾 Serialized transaction (hex): {}", hex::encode(&transaction));
+    ic_cdk::println!("🧮 Serialized transaction length: {} bytes", transaction.len());
+
+    // Get network context
     let ctx = BTC_CONTEXT.with(|cts| cts.get());
     let network = ctx.network;
-    ic_cdk::api::management_canister::bitcoin::bitcoin_send_transaction(
+    ic_cdk::println!("🌐 Network (line 644): {:?}", network);
+
+    // Sending transaction
+    ic_cdk::println!("🚀 Calling bitcoin_send_transaction...");
+    let result = ic_cdk::api::management_canister::bitcoin::bitcoin_send_transaction(
         ic_cdk::api::management_canister::bitcoin::SendTransactionRequest {
             transaction,
             network,
         },
     )
-    .await
-    .unwrap();
-    txn.compute_txid().encode_hex()
+    .await;
+
+    match result {
+        Ok(_) => {
+            let txid = txn.compute_txid().encode_hex::<String>();
+            ic_cdk::println!("✅ Transaction sent successfully, txid: {}", txid);
+            txid
+        }
+        Err(err) => {
+            ic_cdk::println!("❌ Failed to send transaction: {:?}", err);
+            "error_sending_tx".to_string()
+        }
+    }
 }
