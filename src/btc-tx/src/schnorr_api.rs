@@ -139,6 +139,9 @@ pub async fn get_schnorr_public_key(
 
 
 pub async fn schnorr_sign(message: Vec<u8>, derivation_path: Vec<Vec<u8>>) -> Vec<u8> {
+    ic_cdk::println!("Received message len: {}", message.len());
+ic_cdk::println!("First 32 bytes: {}", hex::encode(&message[..32]));
+
     let ctx = BTC_CONTEXT.with(|state| state.get());
     
     ic_cdk::call::<(SignWithSchnorrArgument,), (SignWithSchnorrResponse,)>(

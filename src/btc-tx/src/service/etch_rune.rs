@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use bitcoin::{
-    absolute::LockTime, consensus, hashes::Hash, opcodes, script::Builder, secp256k1::{
+    absolute::LockTime, consensus, hashes::{sha256, Hash, HashEngine}, opcodes, script::Builder, secp256k1::{
         constants::SCHNORR_SIGNATURE_SIZE,  schnorr, Message,  Secp256k1, XOnlyPublicKey
     }, sighash::{EcdsaSighashType, Prevouts, SighashCache, TapSighashType}, taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder}, transaction::Version, Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence, TapSighash, Transaction, TxIn, TxOut, Txid, Witness
 };use candid::CandidType;
@@ -32,7 +32,7 @@ pub async fn etch_rune(mut args : EtchingArgs)->(String,String){
     let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
     let _caller = ic_cdk::id();
     args.rune = args.rune.to_ascii_uppercase();
-    let derivation_path = DerivationPath::p2wpkh(0, 0);
+    let derivation_path = DerivationPath::p2tr(0, 0);
     let ecdsa_public_key = get_ecdsa_public_key(&ctx, derivation_path.to_vec_u8_path().clone()).await;
     let schnorr_public_key = get_schnorr_public_key(&ctx, derivation_path.to_vec_u8_path().clone()).await.expect("Failed to get schnorr public key");
     let caller_p2wpkh_address = get_p2wpkh_address().await;
@@ -294,6 +294,7 @@ If neither is set, the program halts with a trap: "No Term Set".
         mint: None,
         pointer,
     };
+    ic_cdk::println!("Rune To Be Created : {:?}",runestone);
     /*
     encipher() encodes the Runestone into a Bitcoin script.
 
@@ -331,7 +332,7 @@ reveal_input: dummy inputs (e.g., OutPoint::null() for now).
 
 reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune metadata). */
 
-
+    ic_cdk::println!("Reveal Script : {:?}",reveal_script);
     let (_, reveal_fee) = build_reveal_transaction(
         0,
         &control_block,
@@ -364,6 +365,8 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
             script_sig: ScriptBuf::new(),
         })
         .collect::<Vec<TxIn>>();
+
+    ic_cdk::println!("Input - {:?}",input);
         /*Committing input transaction using bitcoin transaction */
     let mut commit_tx = Transaction {
         input,
@@ -374,6 +377,7 @@ reveal_script: the full script being revealed (e.g., contains OP_CHECKSIG + rune
         lock_time: LockTime::ZERO,
         version: bitcoin::transaction::Version(2),
     };
+    ic_cdk::println!("Commit Transaction : {:?}",commit_tx);
     
 
     let sig_bytes = 73;
@@ -491,12 +495,13 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
     let mut prefix = hashed_tag.clone();*/
     //prefix.append(&mut hashed_tag);
     //let signing_data: Vec<_> = prefix.iter().chain(signing_data.iter()).cloned().collect();
-    let sig_hash = TapSighash::hash(&signing_data).to_byte_array();
-    let schnorr_signature =schnorr_api::schnorr_sign(sig_hash.to_vec(), derivation_path.to_vec()).await;
+    //let sig_hash = TapSighash::hash(&signing_data).to_byte_array();
+    let schnorr_signature =schnorr_api::schnorr_sign(signing_data.clone(), derivation_path.to_vec()).await;
+    let sig_hash = bip340_challenge_hash(&signing_data);
     ic_cdk::println!("sig size: {}", schnorr_signature.len());
     ic_cdk::print("Schnorr Signature successful");
     // Verify the signature to be sure that signing works
-    let secp = bitcoin::secp256k1::Secp256k1::verification_only();
+    let secp = bitcoin::secp256k1::Secp256k1::new();
     ic_cdk::print("Verification - secp");
 
     let sig_ = schnorr::Signature::from_slice(&schnorr_signature).unwrap();
@@ -507,7 +512,9 @@ let commit_fee = fee_rate.fee_vb(estimated_vsize as u64).unwrap();
     let msg = Message::from_digest_slice(&sig_hash).unwrap();
 ic_cdk::println!("Digest: {:?}", msg);
 ic_cdk::println!("Public Key: {:?}", schnorr_public_key);
-
+ic_cdk::println!("Signature bytes: {:?}", hex::encode(&schnorr_signature));
+ic_cdk::println!("Public key bytes: {:?}", hex::encode(&schnorr_public_key.serialize()));
+ic_cdk::println!("Digest: {:?}", hex::encode(&sig_hash));
 
 
 let verified = secp.verify_schnorr(&sig_, &msg, &schnorr_public_key).is_ok();
@@ -671,4 +678,15 @@ pub async fn send_bitcoin_transaction(txn: Transaction) -> String {
             "error_sending_tx".to_string()
         }
     }
+}
+
+
+fn bip340_challenge_hash(message : &[u8])->[u8;32]{
+    let tag = b"BIP0340/challenge";
+    let tag_hash = sha256::Hash::hash(tag);
+    let mut engine = sha256::Hash::engine();
+    engine.input(tag_hash.as_ref());
+    engine.input(tag_hash.as_ref());
+    engine.input(message);
+    sha256::Hash::from_engine(engine).to_byte_array()
 }
