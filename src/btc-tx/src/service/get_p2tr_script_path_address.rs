@@ -1,4 +1,4 @@
-use bitcoin::{Address};
+use bitcoin::Address;
 use candid::CandidType;
 use ic_cdk::update;
 use serde::Deserialize;
@@ -31,12 +31,14 @@ pub async fn get_p2tr_script_path_address() -> ResultString {
         Err(e) => return ResultString::err(format!("Script key error: {}", e)),
     };
 
-    let taproot_spend_info = match p2tr::create_taproot_spend_info(internal_key_bytes, script_key_bytes) {
-        Ok(info) => info,
-        Err(e) => return ResultString::err(format!("Taproot spend info error: {}", e)),
-    };
+    let taproot_spend_info =
+        match p2tr::create_taproot_spend_info(internal_key_bytes, script_key_bytes) {
+            Ok(info) => info,
+            Err(e) => return ResultString::err(format!("Taproot spend info error: {}", e)),
+        };
 
-    let address = Address::p2tr_tweaked(taproot_spend_info.output_key(), ctx.bitcoin_network).to_string();
+    let address =
+        Address::p2tr_tweaked(taproot_spend_info.output_key(), ctx.bitcoin_network).to_string();
 
     ResultString::ok(address)
 }
