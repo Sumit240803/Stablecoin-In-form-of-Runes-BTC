@@ -5,13 +5,13 @@ use bitcoin::{
 };
 use candid::Principal;
 //use candid::Principal;
-use ic_cdk::api::management_canister::bitcoin::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
+//use ic_cdk::api::management_canister::bitcoin::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
 use tiny_keccak::{Hasher, Sha3};
 //use tiny_keccak::{Hasher, Sha3};
-
+use ic_cdk::bitcoin_canister::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
 use std::fmt;
 
-pub fn build_transaction_with_fee(
+/*pub fn build_transaction_with_fee(
     own_utxos: &[Utxo],
     own_address: &Address,
     dst_address: &Address,
@@ -93,7 +93,7 @@ pub fn build_transaction_with_fee(
         prevouts,
     ))
 }
-
+*/
 
 /// Estimates a reasonable fee rate (in millisatoshis per byte) for sending a Bitcoin transaction.
 ///
@@ -105,9 +105,9 @@ pub fn build_transaction_with_fee(
 ///
 /// # Returns
 /// A fee rate in millisatoshis per byte (1000 msat = 1 satoshi).
-pub async fn get_fee_per_byte(ctx: &BitcoinContext) -> u64 {
-    let (fee_percentiles,) = bitcoin_get_current_fee_percentiles(
-        GetCurrentFeePercentilesRequest {
+/*pub async fn get_fee_per_byte(ctx: &BitcoinContext) -> u64 {
+    let fee_percentiles = bitcoin_get_current_fee_percentiles(
+        &GetCurrentFeePercentilesRequest {
             network: ctx.network, // already the correct type
         },
     )
@@ -119,7 +119,7 @@ pub async fn get_fee_per_byte(ctx: &BitcoinContext) -> u64 {
     } else {
         fee_percentiles[fee_percentiles.len() / 2] // use median
     }
-}
+}*/
 
 /// Purpose field for a BIP-43/44-style derivation path.
 /// Determines the address type. Values are defined by:
@@ -241,4 +241,152 @@ pub fn generate_derivation_path(principal : &Principal)->Vec<Vec<u8>>{
     hasher.finalize(&mut hash);
     vec![hash.to_vec()]
     
+}
+
+
+pub enum PrimaryOutput {
+    /// Pay someone (spendable output).
+    Address(Address, u64), // destination address, amount in satoshis
+    /// Embed data (unspendable OP_RETURN output).
+    OpReturn(ScriptBuf), // script already starts with OP_RETURN
+}
+
+pub fn select_utxos_greedy(
+    own_utxos: &[Utxo],
+    amount: u64,
+    fee: u64,
+) -> Result<Vec<&Utxo>, String> {
+    // Greedily select UTXOs in reverse order (oldest last) until we cover amount + fee.
+    let mut utxos_to_spend = vec![];
+    let mut total_spent = 0;
+    for utxo in own_utxos.iter().rev() {
+        total_spent += utxo.value;
+        utxos_to_spend.push(utxo);
+        if total_spent >= amount + fee {
+            break;
+        }
+    }
+
+    // Abort if we can't cover the payment + fee.
+    if total_spent < amount + fee {
+        return Err(format!(
+            "Insufficient balance: {}, trying to transfer {} satoshi with fee {}",
+            total_spent, amount, fee
+        ));
+    }
+
+    Ok(utxos_to_spend)
+}
+
+pub fn select_one_utxo(own_utxos: &[Utxo], amount: u64, fee: u64) -> Result<Vec<&Utxo>, String> {
+    for utxo in own_utxos.iter().rev() {
+        if utxo.value >= amount + fee {
+            return Ok(vec![&utxo]);
+        }
+    }
+
+    Err(format!(
+        "No sufficiently large utxo found: amount {} satoshi, fee {}",
+        amount, fee
+    ))
+}
+
+
+
+pub fn build_transaction_with_fee(
+    utxos_to_spend: Vec<&Utxo>,
+    own_address: &Address,
+    primary_output: &PrimaryOutput,
+    fee: u64,
+) -> Result<(Transaction, Vec<TxOut>), String> {
+    // Define a dust threshold below which change outputs are discarded.
+    // This prevents creating outputs that cost more to spend than they're worth.
+    const DUST_THRESHOLD: u64 = 1_000;
+
+    // --- Build Inputs ---
+    // Convert UTXOs into transaction inputs, preparing them for signing.
+    let inputs: Vec<TxIn> = utxos_to_spend
+        .iter()
+        .map(|utxo| TxIn {
+            previous_output: OutPoint {
+                txid: Txid::from_raw_hash(Hash::from_slice(&utxo.outpoint.txid).unwrap()),
+                vout: utxo.outpoint.vout,
+            },
+            sequence: Sequence::MAX,      // No relative timelock constraints
+            witness: Witness::new(),      // Will be filled in during signing
+            script_sig: ScriptBuf::new(), // Empty for SegWit and Taproot (uses witness)
+        })
+        .collect();
+
+    // --- Create Previous Outputs ---
+    // Each TxOut represents an output from previous transactions being spent.
+    // This data is required for signing P2WPKH and P2TR transactions.
+    let prevouts = utxos_to_spend
+        .clone()
+        .into_iter()
+        .map(|utxo| TxOut {
+            value: Amount::from_sat(utxo.value),
+            script_pubkey: own_address.script_pubkey(),
+        })
+        .collect();
+
+    // --- Build Outputs ---
+    // Create the primary output based on the operation type.
+    let mut outputs = Vec::<TxOut>::new();
+
+    match primary_output {
+        PrimaryOutput::Address(addr, amt) => outputs.push(TxOut {
+            script_pubkey: addr.script_pubkey(),
+            value: Amount::from_sat(*amt),
+        }),
+        PrimaryOutput::OpReturn(script) => outputs.push(TxOut {
+            script_pubkey: script.clone(),
+            value: Amount::from_sat(0), // OP_RETURN outputs carry no bitcoin value
+        }),
+    }
+
+    // Calculate change and add change output if above dust threshold.
+    // This prevents value loss while avoiding uneconomical outputs.
+    let total_in: u64 = utxos_to_spend.iter().map(|u| u.value).sum();
+    let change = total_in
+        .checked_sub(outputs.iter().map(|o| o.value.to_sat()).sum::<u64>() + fee)
+        .ok_or("fee exceeds inputs")?;
+
+    if change >= DUST_THRESHOLD {
+        outputs.push(TxOut {
+            script_pubkey: own_address.script_pubkey(),
+            value: Amount::from_sat(change),
+        });
+    }
+
+    // --- Assemble Transaction ---
+    // Create the final unsigned transaction with version 2 for modern features.
+    Ok((
+        Transaction {
+            input: inputs,
+            output: outputs,
+            lock_time: LockTime::ZERO, // No absolute timelock
+            version: Version::TWO,     // Standard for modern Bitcoin transactions
+        },
+        prevouts,
+    ))
+}
+pub async fn get_fee_per_byte(ctx: &BitcoinContext) -> u64 {
+    // Query recent fee percentiles from the Bitcoin network.
+    // This gives us real-time fee data based on recent transaction activity.
+    let fee_percentiles = bitcoin_get_current_fee_percentiles(&GetCurrentFeePercentilesRequest {
+        network: ctx.network,
+    })
+    .await
+    .unwrap();
+
+    if fee_percentiles.is_empty() {
+        // Empty percentiles indicate that we're likely on regtest with no standard transactions.
+        // Use a reasonable fallback that works for development and testing.
+        2000 // 2 sat/vB in millisatoshis
+    } else {
+        // Use the 50th percentile (median) for balanced confirmation time and cost.
+        // This avoids both overpaying (high percentiles) and slow confirmation (low percentiles).
+        fee_percentiles[50]
+    }
 }

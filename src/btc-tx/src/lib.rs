@@ -4,9 +4,9 @@ use candid::{CandidType, Principal};
 use ic_cdk::{init, post_upgrade};
 
 use serde::Deserialize;
-use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
+//use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
 
-
+use ic_cdk::bitcoin_canister::Network;
 
 mod common;
 mod ecdsa;
@@ -16,16 +16,17 @@ mod schnorr_api;
 mod p2tr;
 mod user_service;
 mod tags;
-#[derive(Clone, Copy,CandidType,Deserialize)]
+mod runes;
+/*#[derive(Clone, Copy,CandidType,Deserialize)]
 pub enum Network {
     Mainnet,
     Testnet,
     Regtest,
 }
-
+*/
 #[derive(Clone,Copy)]
 pub struct BitcoinContext{
-    pub network : BitcoinNetwork,
+    pub network : Network,
     pub bitcoin_network : bitcoin::Network,
     pub key_name : &'static str,
     pub schnorr_canister: Option<Principal>,
@@ -33,14 +34,14 @@ pub struct BitcoinContext{
 }
 #[derive(CandidType, Deserialize)]
 pub struct InitArgs{
-    pub network : BitcoinNetwork,
+    pub network : Network,
     pub schnorr_canister : Option<Principal>
 }
 
 thread_local! {
     static BTC_CONTEXT: Cell<BitcoinContext> = 
         Cell::new(BitcoinContext {
-            network: BitcoinNetwork::Regtest,
+            network: Network::Regtest,
             bitcoin_network: bitcoin::Network::Regtest,
             key_name: "dfx_test_key",
             schnorr_canister : None,
@@ -53,16 +54,16 @@ thread_local! {
 /*thread_local! {
     static INTENTS : RefCell<HashMap<String,(Principal,u64)>> =RefCell::new(HashMap::new());
 }*/
-fn init_upgrade(network: BitcoinNetwork ,schnorr_canister :Option<Principal>) {
+fn init_upgrade(network: Network ,schnorr_canister :Option<Principal>) {
     let key_name = match network {
-        BitcoinNetwork::Regtest => "dfx_test_key",
-        BitcoinNetwork::Mainnet | BitcoinNetwork::Testnet => "test_key_1",
+        Network::Regtest => "dfx_test_key",
+        Network::Mainnet | Network::Testnet => "test_key_1",
     };
 
     let bitcoin_network = match network {
-        BitcoinNetwork::Mainnet => bitcoin::Network::Bitcoin,
-        BitcoinNetwork::Testnet => bitcoin::Network::Testnet,
-        BitcoinNetwork::Regtest => bitcoin::Network::Regtest,
+        Network::Mainnet => bitcoin::Network::Bitcoin,
+        Network::Testnet => bitcoin::Network::Testnet,
+        Network::Regtest => bitcoin::Network::Regtest,
     };
 
     BTC_CONTEXT.with(|ctx| {

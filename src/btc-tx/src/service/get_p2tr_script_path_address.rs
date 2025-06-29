@@ -1,4 +1,4 @@
-use bitcoin::Address;
+/*use bitcoin::Address;
 use candid::CandidType;
 use ic_cdk::update;
 use serde::Deserialize;
@@ -41,4 +41,4 @@ pub async fn get_p2tr_script_path_address() -> ResultString {
         Address::p2tr_tweaked(taproot_spend_info.output_key(), ctx.bitcoin_network).to_string();
 
     ResultString::ok(address)
-}
+}*/
