@@ -1,4 +1,4 @@
-use std::str::FromStr;
+/*use std::str::FromStr;
 
 use bitcoin::{
     absolute::LockTime,
@@ -11,21 +11,21 @@ use bitcoin::{
     taproot::{ControlBlock, LeafVersion, Signature, TapLeafHash, TaprootBuilder},
     transaction::Version,
     Address, Amount, CompressedPublicKey, FeeRate, OutPoint, Script, ScriptBuf, Sequence,
-    TapSighash, Transaction, TxIn, TxOut, Txid, Witness,
+     Transaction, TxIn, TxOut, Txid, Witness,
 };
 use candid::CandidType;
 
 use hex::ToHex;
 use ic_cdk::{
-    api::management_canister::bitcoin::{BitcoinNetwork, Utxo},
-    update,
+   
+    api::{canister_cycle_balance}, bitcoin_canister::{bitcoin_send_transaction, Network, SendTransactionRequest, Utxo}, update
 };
 use ordinals::{Artifact, Etching, Rune, Runestone, SpacedRune, Terms};
 use serde::Deserialize;
 
 use crate::{
     common::DerivationPath,
-    ecdsa::{get_ecdsa_public_key, sign_with_ecdsa},
+    ecdsa::{get_ecdsa_public_key, sign_with_ecdsa_fn},
     schnorr_api::{self, get_schnorr_public_key},
     service::{
         bitcoin_get_utxos::get_utxos, get_balance::get_balance,
@@ -51,9 +51,10 @@ pub struct EtchingArgs {
 #[update]
 pub async fn etch_rune(mut args: EtchingArgs) -> (String, String) {
     let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
-    let _caller = ic_cdk::id();
+    //let _caller = ic_cdk::id();
     args.rune = args.rune.to_ascii_uppercase();
     let derivation_path = DerivationPath::p2tr(0, 0);
+    ic_cdk::println!("Derivation Path : {:?}",derivation_path.to_vec_u8_path());
     let ecdsa_public_key =
         get_ecdsa_public_key(&ctx, derivation_path.to_vec_u8_path().clone()).await;
     ic_cdk::println!("ECDSA Public Key : {:?}", ecdsa_public_key);
@@ -94,9 +95,9 @@ pub fn check_etching(height: u32, arg: &EtchingArgs) {
     }*/
     let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
     let network = match ctx.network {
-        BitcoinNetwork::Mainnet => bitcoin::Network::Bitcoin,
-        BitcoinNetwork::Testnet => bitcoin::Network::Testnet,
-        BitcoinNetwork::Regtest => bitcoin::Network::Regtest,
+        Network::Mainnet => bitcoin::Network::Bitcoin,
+        Network::Testnet => bitcoin::Network::Testnet,
+        Network::Regtest => bitcoin::Network::Regtest,
     };
     let minimum = Rune::minimum_at_height(network, ordinals::Height(height));
     let SpacedRune { rune, spacers: _ } = SpacedRune::from_str(&arg.rune).unwrap();
@@ -240,9 +241,9 @@ pub async fn build_and_sign_etching_transaction(
         .unwrap();
     let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
     let network = match ctx.network {
-        BitcoinNetwork::Mainnet => bitcoin::Network::Bitcoin,
-        BitcoinNetwork::Testnet => bitcoin::Network::Testnet,
-        BitcoinNetwork::Regtest => bitcoin::Network::Regtest,
+        Network::Mainnet => bitcoin::Network::Bitcoin,
+        Network::Testnet => bitcoin::Network::Testnet,
+        Network::Regtest => bitcoin::Network::Regtest,
     };
     let caller_address = Address::from_str(&caller_p2wkh_address)
         .unwrap()
@@ -424,8 +425,8 @@ pub async fn build_and_sign_etching_transaction(
             )
             .unwrap();
         ic_cdk::println!("SigHash (Inside the loop) : {}", sighash);
-        ic_cdk::println!("Before signing: {}", ic_cdk::api::canister_balance());
-        let signature = match sign_with_ecdsa(
+        ic_cdk::println!("Before signing: {}",canister_cycle_balance());
+        let signature = match sign_with_ecdsa_fn(
             ctx.key_name.to_owned(),
             derivation_path.clone(),
             sighash.to_byte_array().to_vec(),
@@ -455,7 +456,7 @@ pub async fn build_and_sign_etching_transaction(
                 );
             }
         };
-        ic_cdk::println!("After signing: {}", ic_cdk::api::canister_balance());
+        ic_cdk::println!("After signing: {}", canister_cycle_balance());
         let compact: [u8; 64] = signature.serialize_compact();
         let signature_bytes = compact.to_vec();
         ic_cdk::println!("Signature Compact {:?}", signature_bytes);
@@ -530,16 +531,21 @@ pub async fn build_and_sign_etching_transaction(
     //prefix.append(&mut hashed_tag);
     //let signing_data: Vec<_> = prefix.iter().chain(signing_data.iter()).cloned().collect();
     //let sig_hash = TapSighash::hash(&signing_data).to_byte_array();
+    ic_cdk::println!("Signing Data Length : {:?}", signing_data.len());
     let schnorr_signature =
-        schnorr_api::schnorr_sign(signing_data.clone(), derivation_path.to_vec()).await;
-    let sig_hash = bip340_challenge_hash(&signing_data);
+    schnorr_api::schnorr_sign(signing_data.to_vec(), derivation_path.to_vec()).await;
     ic_cdk::println!("sig size: {}", schnorr_signature.len());
-    ic_cdk::print("Schnorr Signature successful");
+    let sig_ = schnorr::Signature::from_slice(&schnorr_signature).unwrap();
+    let r_x =&schnorr_signature[..32];
+    let pubkey_x = &schnorr_public_key.serialize();
+
+    let sig_hash = bip340_challenge_hash(r_x ,pubkey_x,&signing_data);
+    ic_cdk::println!("Signature Hash : {:?}",sig_hash);
+    ic_cdk::println!("Schnorr Signature successful");
     // Verify the signature to be sure that signing works
     let secp = bitcoin::secp256k1::Secp256k1::new();
-    ic_cdk::print("Verification - secp");
+    ic_cdk::println!("Verification - secp");
 
-    let sig_ = schnorr::Signature::from_slice(&schnorr_signature).unwrap();
     //let digest = sha256::Hash::hash(&signing_data).to_byte_array();
     ic_cdk::println!("Signature: {:?}", sig_);
     ic_cdk::println!("Signautre from slice : {}", sig_);
@@ -704,8 +710,8 @@ pub async fn send_bitcoin_transaction(txn: Transaction) -> String {
 
     // Sending transaction
     ic_cdk::println!("🚀 Calling bitcoin_send_transaction...");
-    let result = ic_cdk::api::management_canister::bitcoin::bitcoin_send_transaction(
-        ic_cdk::api::management_canister::bitcoin::SendTransactionRequest {
+    let result = bitcoin_send_transaction(
+        &SendTransactionRequest {
             transaction,
             network,
         },
@@ -725,12 +731,116 @@ pub async fn send_bitcoin_transaction(txn: Transaction) -> String {
     }
 }
 
-fn bip340_challenge_hash(message: &[u8]) -> [u8; 32] {
+fn bip340_challenge_hash(r_x: &[u8], pubkey_x: &[u8], msg: &[u8]) -> [u8; 32] {
     let tag = b"BIP0340/challenge";
     let tag_hash = sha256::Hash::hash(tag);
     let mut engine = sha256::Hash::engine();
     engine.input(tag_hash.as_ref());
     engine.input(tag_hash.as_ref());
-    engine.input(message);
+    engine.input(r_x);        // 32 bytes from signature
+    engine.input(pubkey_x);   // 32 bytes from x-only pubkey
+    engine.input(msg);        // the actual sighash data
     sha256::Hash::from_engine(engine).to_byte_array()
+}
+*/
+
+use bitcoin::{consensus::serialize, key::Secp256k1, secp256k1::PublicKey, Address, XOnlyPublicKey};
+use ic_cdk::{bitcoin_canister::{bitcoin_get_utxos, bitcoin_send_transaction, GetUtxosRequest, SendTransactionRequest}, trap, update};
+
+use crate::{common::{get_fee_per_byte, DerivationPath, PrimaryOutput}, p2tr, runes::{build_etching_script, Etching}, schnorr_api::{get_schnorr_public_key, schnorr_sign}, service::bitcoin_get_utxos, BTC_CONTEXT};
+
+#[update]
+pub async fn etch_rune(name: String) -> String {
+    let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
+
+    // Validate rune name according to protocol rules.
+    // Runes use strict naming conventions for consistency.
+    if name.is_empty() {
+        trap("Rune name cannot be empty");
+    }
+
+    if name.len() > 28 {
+        trap("Rune name cannot exceed 28 characters");
+    }
+
+    if !name.chars().all(|c| c.is_ascii_uppercase()) {
+        trap("Rune name must contain only uppercase letters A-Z");
+    }
+
+    // Derive the internal key for our Taproot address.
+    // Since rune data goes in OP_RETURN (not script), we use simple key-path spending.
+    let internal_key_path = DerivationPath::p2tr(0, 0);
+    let internal_key = get_schnorr_public_key(&ctx, internal_key_path.to_vec_u8_path()).await;
+    let internal_key = XOnlyPublicKey::from(PublicKey::from_slice(&internal_key).unwrap());
+
+    // Create our Taproot address for funding the rune etching.
+    // No script commitments needed since rune data goes in OP_RETURN output.
+    let secp256k1_engine = Secp256k1::new();
+    let own_address = Address::p2tr(&secp256k1_engine, internal_key, None, ctx.bitcoin_network);
+
+    // Query for available funds (UTXOs) to pay for the rune etching.
+    // We need existing bitcoin to cover transaction fees and any change.
+    let own_utxos = bitcoin_get_utxos(&GetUtxosRequest {
+        address: own_address.to_string(),
+        network: ctx.network,
+        filter: None,
+    })
+    .await
+    .unwrap()
+    .utxos;
+
+    // Create the rune etching configuration with fixed parameters.
+    // This defines all the token properties that will be permanently recorded.
+    let etching = Etching {
+        divisibility: 0,    // No decimal places (whole units only)
+        premine: 1_000_000, // Mint 1M units to the etcher (fixed supply)
+        rune_name: name.clone(),
+        symbol: Some('🪙'), // Unicode coin symbol for display
+        terms: None,        // No open minting allowed
+        turbo: false,       // Standard etching mode
+        spacers: 0,         // No visual spacers in the name
+    };
+
+    // Build the runestone script containing the rune metadata.
+    // This creates the OP_RETURN output that defines the new token.
+    let runestone_script = build_etching_script(&etching)
+        .unwrap_or_else(|e| trap(&format!("Failed to build runestone: {}", e)));
+
+    // Build the rune etching transaction.
+    // The transaction includes an OP_RETURN output with the encoded runestone.
+    let fee_per_byte = get_fee_per_byte(&ctx).await;
+    let (transaction, prevouts) = p2tr::build_transaction(
+        &ctx,
+        &own_address,
+        &own_utxos,
+        p2tr::SelectUtxosMode::Single,
+        &PrimaryOutput::OpReturn(runestone_script),
+        fee_per_byte,
+    )
+    .await;
+
+    // Sign the rune etching transaction using key-path spending.
+    // Simple signature since we're not using any script commitments.
+    let signed_transaction = p2tr::sign_transaction_key_spend(
+        &ctx,
+        &own_address,
+        transaction,
+        prevouts.as_slice(),
+        internal_key_path.to_vec_u8_path(),
+        vec![],
+        schnorr_sign,
+    )
+    .await;
+
+    // Broadcast the transaction to the Bitcoin network.
+    // Once confirmed, the rune is permanently etched and the tokens are minted.
+    bitcoin_send_transaction(&SendTransactionRequest {
+        network: ctx.network,
+        transaction: serialize(&signed_transaction),
+    })
+    .await
+    .unwrap();
+
+    // Return the transaction ID so users can track their rune etching.
+    signed_transaction.compute_txid().to_string()
 }

@@ -1,11 +1,12 @@
-use crate::{common::build_transaction_with_fee, ecdsa::mock_sign_with_ecdsa, BitcoinContext};
+/*use crate::{common::build_transaction_with_fee, ecdsa::mock_sign_with_ecdsa, BitcoinContext};
 use bitcoin::{
     ecdsa::Signature as BitcoinSignature,
     secp256k1::{ecdsa::Signature as SecpSignature, Message},
     sighash::{EcdsaSighashType, SighashCache},
     Address, AddressType, PublicKey, ScriptBuf, Transaction, TxOut, Witness,
 };
-use ic_cdk::api::management_canister::bitcoin::{MillisatoshiPerByte,Satoshi,Utxo};
+use ic_cdk::bitcoin_canister::{MillisatoshiPerByte, Satoshi, Utxo};
+
 // Builds a transaction to send the given `amount` of satoshis to the
 // destination address.
 pub async fn build_transaction(
@@ -110,4 +111,4 @@ where
     }
 
     transaction
-}
+}*/

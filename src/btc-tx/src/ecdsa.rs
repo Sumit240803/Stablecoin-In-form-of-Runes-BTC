@@ -1,10 +1,10 @@
 use crate::BitcoinContext;
 use bitcoin::secp256k1::ecdsa::Signature;
-use ic_cdk::api::management_canister::{
-    self
+use ic_cdk::management_canister::{
+     ecdsa_public_key, sign_with_ecdsa, SignWithEcdsaArgs
 };
-use ic_cdk::api::management_canister::ecdsa::{
-    EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgument, SignWithEcdsaArgument,
+use ic_cdk::management_canister::{
+    EcdsaCurve, EcdsaKeyId,EcdsaPublicKeyArgs
 };
 
 use std::{cell::RefCell, collections::HashMap};
@@ -23,7 +23,7 @@ pub async fn get_ecdsa_public_key(ctx: &BitcoinContext, derivation_path: Vec<Vec
     }
 
     // Request the ECDSA public key from the ECDSA API.
-    let (response,) = management_canister::ecdsa::ecdsa_public_key(EcdsaPublicKeyArgument {
+    let response = ecdsa_public_key(&EcdsaPublicKeyArgs {
         canister_id: None,
         derivation_path: derivation_path.clone(),
         key_id: EcdsaKeyId {
@@ -42,12 +42,12 @@ pub async fn get_ecdsa_public_key(ctx: &BitcoinContext, derivation_path: Vec<Vec
 
     public_key
 }
-pub async fn sign_with_ecdsa(
+pub async fn sign_with_ecdsa_fn(
     key_name: String,
     derivation_path: Vec<Vec<u8>>,
     message_hash: Vec<u8>,
 ) -> Result<Signature, String> {
-    match management_canister::ecdsa::sign_with_ecdsa(SignWithEcdsaArgument {
+    match sign_with_ecdsa(&SignWithEcdsaArgs {
         message_hash,
         derivation_path,
         key_id: EcdsaKeyId {
@@ -57,11 +57,11 @@ pub async fn sign_with_ecdsa(
     })
     .await
     {
-        Ok((response,)) => {
+        Ok(response) => {
             Signature::from_compact(&response.signature)
                 .map_err(|e| format!("Signature parse error: {:?}", e))
         }
-        Err((code, msg)) => Err(format!("ECDSA call failed: {:?} - {}", code, msg)),
+        Err(err) => Err(format!("ECDSA call failed: {:?}", err)),
     }
 }
 

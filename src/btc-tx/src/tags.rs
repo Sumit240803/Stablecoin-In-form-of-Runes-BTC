@@ -1,4 +1,4 @@
-use bitcoin::blockdata::script;
+/*use bitcoin::blockdata::script;
 
 use std::{convert::TryInto, mem};
 
@@ -64,4 +64,4 @@ impl Tag {
             mem::swap(&mut tmp, builder);
         }
     }
-}
+}*/

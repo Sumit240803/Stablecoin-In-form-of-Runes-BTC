@@ -82,10 +82,12 @@ fn mgmt_canister_id()->CanisterId{
 
 use std::{cell::RefCell, collections::HashMap};
 
-use ic_cdk::api::management_canister::schnorr::{schnorr_public_key, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgument, SignWithSchnorrArgument, SignWithSchnorrResponse};
+//use ic_cdk::api::management_canister::schnorr::{schnorr_public_key, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgument, SignWithSchnorrArgument, SignWithSchnorrResponse};
 
 
-use crate::{BitcoinContext, BTC_CONTEXT};
+use ic_cdk::{ management_canister::{schnorr_public_key, sign_with_schnorr, Bip341, SchnorrAlgorithm, SchnorrAux, SchnorrKeyId, SchnorrPublicKeyArgs, SignWithSchnorrArgs}};
+
+use crate::{BitcoinContext};
 type DerivationPath = Vec<Vec<u8>>;
 type SchnorrKey = Vec<u8>;
 
@@ -96,58 +98,50 @@ thread_local! {
 pub async fn get_schnorr_public_key(
     ctx: &BitcoinContext,
     derivation_path: Vec<Vec<u8>>,
-) -> Result<Vec<u8>, String> {
-    // Return cached key if available
+) -> Vec<u8> {
+    // Retrieve and return already stored public key
     if let Some(key) = SCHNORR_KEY_CACHE.with_borrow(|map| map.get(&derivation_path).cloned()) {
-        ic_cdk::println!("Using cached key: {:?}", key);
-        return Ok(key);
+        return key;
     }
 
-    ic_cdk::println!("Fetching new key for path: {:?}", derivation_path);
-    
-    let arg = SchnorrPublicKeyArgument {
+    let public_key =schnorr_public_key(&SchnorrPublicKeyArgs {
         canister_id: None,
         derivation_path: derivation_path.clone(),
         key_id: SchnorrKeyId {
             name: ctx.key_name.to_string(),
             algorithm: SchnorrAlgorithm::Bip340secp256k1,
         },
-    };
+    })
+    .await
+    .unwrap()
+    .public_key;
 
-    ic_cdk::println!("Sending argument: {:?}", arg);
-
-    let (response,) = schnorr_public_key(arg)
-        .await
-        .map_err(|e| format!("Schnorr key fetch failed: {:?}", e))?;
-
-    ic_cdk::println!("Raw response: {:?}", response);
-    ic_cdk::println!("Public key length: {}", response.public_key.len());
-    ic_cdk::println!("Public key bytes: {:?}", response.public_key);
-
-    let public_key = response.public_key;
-
-  
-
-    SCHNORR_KEY_CACHE.with_borrow_mut(|map: &mut HashMap<Vec<Vec<u8>>, Vec<u8>>| {
+    // Cache the public key
+    SCHNORR_KEY_CACHE.with_borrow_mut(|map| {
         map.insert(derivation_path, public_key.clone());
     });
 
-    Ok(public_key)
+    public_key
 }
 
 
-
-
-pub async fn schnorr_sign(message: Vec<u8>, derivation_path: Vec<Vec<u8>>) -> Vec<u8> {
+/*pub async fn schnorr_sign(message: Vec<u8>, derivation_path: Vec<Vec<u8>>) -> Vec<u8> {
     ic_cdk::println!("Received message len: {}", message.len());
 ic_cdk::println!("First 32 bytes: {}", hex::encode(&message[..32]));
 
     let ctx = BTC_CONTEXT.with(|state| state.get());
+    let canister_id = *ctx.schnorr_canister.as_ref().unwrap();
+    let args = SignWithSchnorrArgs{
+        message,
+        derivation_path,
+        key_id : SchnorrKeyId { algorithm: SchnorrAlgorithm::Bip340secp256k1, name: ctx.key_name.to_string() },
+    };
     
-    ic_cdk::call::<(SignWithSchnorrArgument,), (SignWithSchnorrResponse,)>(
+    
+    ic_cdk::call::<(SignWithSchnorrArgs,), (SignWithSchnorrResult,)>(
         *ctx.schnorr_canister.as_ref().unwrap(),
         "sign_with_schnorr",
-        (SignWithSchnorrArgument {
+        (SignWithSchnorrArgs{
             message,
             derivation_path,
             key_id : SchnorrKeyId { algorithm: SchnorrAlgorithm::Bip340secp256k1, name: ctx.key_name.to_string() },
@@ -157,4 +151,38 @@ ic_cdk::println!("First 32 bytes: {}", hex::encode(&message[..32]));
     .unwrap()
     .0
     .signature
+}*/
+
+pub async fn schnorr_sign(
+    key_name : String,
+    derivation_path : Vec<Vec<u8>>,
+    merkle_root_hash : Option<Vec<u8>>,
+    message : Vec<u8>
+)-> Vec<u8>{
+    let aux = merkle_root_hash.map(|bytes|{
+        SchnorrAux::Bip341(Bip341{
+            merkle_root_hash : bytes
+        })
+    });
+    sign_with_schnorr(&SignWithSchnorrArgs{
+        message,
+        derivation_path,
+        key_id : SchnorrKeyId{
+            name : key_name,
+            algorithm : SchnorrAlgorithm::Bip340secp256k1
+        },
+        aux
+    })
+    .await
+    .unwrap()
+    .signature
+}
+
+pub async fn mock_sign_with_schnorr(
+    _key_name: String,
+    _derivation_path: Vec<Vec<u8>>,
+    _merkle_root_hash: Option<Vec<u8>>,
+    _message_hash: Vec<u8>,
+) -> Vec<u8> {
+    vec![255; 64]
 }
