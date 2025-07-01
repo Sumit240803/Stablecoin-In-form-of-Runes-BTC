@@ -24,37 +24,30 @@ pub enum Network {
     Regtest,
 }
 */
-#[derive(Clone,Copy)]
-pub struct BitcoinContext{
-    pub network : Network,
-    pub bitcoin_network : bitcoin::Network,
-    pub key_name : &'static str,
-    pub schnorr_canister: Option<Principal>,
-  
+#[derive(Clone, Copy)]
+pub struct BitcoinContext {
+    pub network: Network,
+    pub bitcoin_network: bitcoin::Network,
+    pub key_name: &'static str,
 }
 #[derive(CandidType, Deserialize)]
 pub struct InitArgs{
-    pub network : Network,
-    pub schnorr_canister : Option<Principal>
+    pub network : Network
 }
 
 thread_local! {
-    static BTC_CONTEXT: Cell<BitcoinContext> = 
+    static BTC_CONTEXT: Cell<BitcoinContext> = const {
         Cell::new(BitcoinContext {
-            network: Network::Regtest,
-            bitcoin_network: bitcoin::Network::Regtest,
+            network: Network::Testnet,
+            bitcoin_network: bitcoin::Network::Testnet,
             key_name: "dfx_test_key",
-            schnorr_canister : None,
-        });
-
-    
-    static INTENTS : RefCell<HashMap<Principal,(String,u64)>> =RefCell::new(HashMap::new());
-    
-    }
+        })
+    };
+}
 /*thread_local! {
     static INTENTS : RefCell<HashMap<String,(Principal,u64)>> =RefCell::new(HashMap::new());
 }*/
-fn init_upgrade(network: Network ,schnorr_canister :Option<Principal>) {
+fn init_upgrade(network: Network) {
     let key_name = match network {
         Network::Regtest => "dfx_test_key",
         Network::Mainnet | Network::Testnet => "test_key_1",
@@ -71,22 +64,24 @@ fn init_upgrade(network: Network ,schnorr_canister :Option<Principal>) {
             network,
             bitcoin_network,
             key_name,
-            schnorr_canister
         })
     });
 }
 
-
 #[init]
-pub fn init(args : InitArgs) {
-    init_upgrade(args.network, args.schnorr_canister);
+pub fn init(network: Network) {
+    init_upgrade(network);
 }
 
+/// Post-upgrade hook.
+/// Reinitializes the BitcoinContext with the same logic as `init`.
 #[post_upgrade]
-fn upgrade(args : InitArgs) {
-    init_upgrade(args.network, args.schnorr_canister);
+fn upgrade(network: Network) {
+    init_upgrade(network);
 }
 
+/// Input structure for sending Bitcoin.
+/// Used across P2PKH, P2WPKH, and P2TR transfer endpoints.
 #[derive(candid::CandidType, candid::Deserialize)]
 pub struct SendRequest {
     pub destination_address: String,

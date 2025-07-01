@@ -744,10 +744,10 @@ fn bip340_challenge_hash(r_x: &[u8], pubkey_x: &[u8], msg: &[u8]) -> [u8; 32] {
 }
 */
 
-use bitcoin::{consensus::serialize, key::Secp256k1, secp256k1::PublicKey, Address, XOnlyPublicKey};
+use bitcoin::{consensus::serialize,  secp256k1::{PublicKey,Secp256k1}, Address, XOnlyPublicKey};
 use ic_cdk::{bitcoin_canister::{bitcoin_get_utxos, bitcoin_send_transaction, GetUtxosRequest, SendTransactionRequest}, trap, update};
 
-use crate::{common::{get_fee_per_byte, DerivationPath, PrimaryOutput}, p2tr, runes::{build_etching_script, Etching}, schnorr_api::{get_schnorr_public_key, schnorr_sign}, service::bitcoin_get_utxos, BTC_CONTEXT};
+use crate::{common::{get_fee_per_byte, DerivationPath, PrimaryOutput}, p2tr, runes::{build_etching_script, Etching}, schnorr_api::{get_schnorr_public_key, schnorr_sign}, BTC_CONTEXT};
 
 #[update]
 pub async fn etch_rune(name: String) -> String {
