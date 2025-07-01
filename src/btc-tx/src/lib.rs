@@ -1,29 +1,23 @@
-use std::{cell::{Cell, RefCell}, collections::HashMap};
+use std::{
+    cell::{Cell},
+   
+};
 
-use candid::{CandidType, Principal};
+use candid::{CandidType};
 use ic_cdk::{init, post_upgrade};
 
 use serde::Deserialize;
-//use ic_cdk::api::management_canister::bitcoin::BitcoinNetwork;
+
 
 use ic_cdk::bitcoin_canister::Network;
 
 mod common;
 mod ecdsa;
-mod service;
-mod p2wpkh;
-mod schnorr_api;
 mod p2tr;
-mod user_service;
-mod tags;
+mod schnorr_api;
+mod service;
 mod runes;
-/*#[derive(Clone, Copy,CandidType,Deserialize)]
-pub enum Network {
-    Mainnet,
-    Testnet,
-    Regtest,
-}
-*/
+
 #[derive(Clone, Copy)]
 pub struct BitcoinContext {
     pub network: Network,
@@ -31,8 +25,8 @@ pub struct BitcoinContext {
     pub key_name: &'static str,
 }
 #[derive(CandidType, Deserialize)]
-pub struct InitArgs{
-    pub network : Network
+pub struct InitArgs {
+    pub network: Network,
 }
 
 thread_local! {
@@ -44,9 +38,7 @@ thread_local! {
         })
     };
 }
-/*thread_local! {
-    static INTENTS : RefCell<HashMap<String,(Principal,u64)>> =RefCell::new(HashMap::new());
-}*/
+
 fn init_upgrade(network: Network) {
     let key_name = match network {
         Network::Regtest => "dfx_test_key",

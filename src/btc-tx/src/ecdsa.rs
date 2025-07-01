@@ -1,11 +1,7 @@
 use crate::BitcoinContext;
 use bitcoin::secp256k1::ecdsa::Signature;
-use ic_cdk::management_canister::{
-     ecdsa_public_key, sign_with_ecdsa, SignWithEcdsaArgs
-};
-use ic_cdk::management_canister::{
-    EcdsaCurve, EcdsaKeyId,EcdsaPublicKeyArgs
-};
+use ic_cdk::management_canister::{ecdsa_public_key, sign_with_ecdsa, SignWithEcdsaArgs};
+use ic_cdk::management_canister::{EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgs};
 
 use std::{cell::RefCell, collections::HashMap};
 
@@ -15,10 +11,11 @@ thread_local! {
     static ECDSA_KEY_CACHE: RefCell<HashMap<DerivationPath, EcdsaKey>> = RefCell::new(HashMap::new());
 }
 
-
 pub async fn get_ecdsa_public_key(ctx: &BitcoinContext, derivation_path: Vec<Vec<u8>>) -> Vec<u8> {
     // Check in-memory cache first.
-    if let Some(key) = ECDSA_KEY_CACHE.with_borrow(|map: &HashMap<Vec<Vec<u8>>, Vec<u8>>| map.get(&derivation_path).cloned()) {
+    if let Some(key) = ECDSA_KEY_CACHE
+        .with_borrow(|map: &HashMap<Vec<Vec<u8>>, Vec<u8>>| map.get(&derivation_path).cloned())
+    {
         return key;
     }
 
@@ -57,15 +54,11 @@ pub async fn sign_with_ecdsa_fn(
     })
     .await
     {
-        Ok(response) => {
-            Signature::from_compact(&response.signature)
-                .map_err(|e| format!("Signature parse error: {:?}", e))
-        }
+        Ok(response) => Signature::from_compact(&response.signature)
+            .map_err(|e| format!("Signature parse error: {:?}", e)),
         Err(err) => Err(format!("ECDSA call failed: {:?}", err)),
     }
 }
-
-
 
 pub async fn mock_sign_with_ecdsa(
     _key_name: String,
