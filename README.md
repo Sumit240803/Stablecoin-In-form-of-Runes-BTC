@@ -1,7 +1,6 @@
 
-## BTC backed Runes - ICP & Rust
-
-This project is based on staking BTC and get runes in exchange of it. These runes could be traded or stored. The ratio of Rune to that of BTC will be 1:1. 
+# BTC backed Runes - ICP & Rust
+This project is based on staking BTC and get runes in exchange of it. These runes could be traded or stored. The ratio of Rune to that of BTC will be 1:1.
 ## Prerequisites
 
 Before starting development, ensure you have:
@@ -12,7 +11,7 @@ Before starting development, ensure you have:
 - [Bitcoin core ](https://bitcoincore.org/bin/bitcoin-core-27.0/)
     - For bitcoin core you need to find your specific system version. For example : if you are on Linux you need to download (bitcoin-27.0-aarch64-linux-gnu.tar.gz from the above link).
 - Linux (Preferred) - Could be WSL for windows or a linux operating system.
-            
+- Ord [Link to install](https://github.com/ordinals/ord?tab=readme-ov-file)           
 ## Deployment
 
 Clone project into local directory
@@ -39,12 +38,46 @@ The Deployment takes some arguments
  Select regtest for local testing through arrow keys
 
 ```
-You also need to add schnorr canister's id which can be found using this in another terminal
-```bash
- dfx canister id schnorr_canister
-```
+
 After all the above steps you must see the links to the canisters.
 
+## Etch Rune
+
+After deploying the canister you need to run the following commands 
+
+First make sure you have installed ord into your system. 
+[Link to install ord](https://github.com/ordinals/ord?tab=readme-ov-file).
+
+ Follow these steps
+
+1. Start the ord server to track Rune balances:
+
+ ```
+ord --config-dir . server
+ ```
+2. Get a Taproot address for the Rune etching:
+```
+dfx canister call btc-tx get_p2tr_key_path_only_address '()'
+```
+3. Fund the address with bitcoin to pay for the etching:
+
+```
+bitcoin-cli -conf=$(pwd)/bitcoin.conf generatetoaddress 100 <p2tr_key_path_only_address>
+```
+4. Etch the Rune with an uppercase name (maximum 28 characters):
+```
+dfx canister call btc-tx etch_rune '("ICPRUNE")'
+```
+
+5. Mine a block to confirm the etching:
+```
+bitcoin-cli -conf=$(pwd)/bitcoin.conf generatetoaddress 1 <p2tr_key_path_only_address>
+```
+6. Decode the Runestone to verify the etching:
+```
+ord --config-dir . decode --txid <transaction_id>
+```
+The Rune is now etched with 1_000_000 tokens minted to your address. The tokens can be transferred using standard Bitcoin transactions with Runestone data.
 ## Documentation
 
 [Runes](https://internetcomputer.org/docs/build-on-btc/runes)
