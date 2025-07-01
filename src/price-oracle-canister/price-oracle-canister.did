@@ -1,3 +1,0 @@
-service : {
-  get_btc_price: () -> (text) query;
-}

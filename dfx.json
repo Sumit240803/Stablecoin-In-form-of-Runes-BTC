@@ -1,15 +1,6 @@
 {
   "canisters": {
-    "usdb-rune-backend": {
-      "candid": "src/usdb-rune-backend/usdb-rune-backend.did",
-      "package": "usdb-rune-backend",
-      "type": "rust"
-    },
-    "price-oracle-canister":{
-      "candid": "src/price-oracle-canister/price-oracle-canister.did",
-      "package": "price-oracle-canister",
-      "type": "rust"
-    },
+   
     "btc-tx":{
       "candid" :"src/btc-tx/btc-tx.did",
       "package":"btc-tx",

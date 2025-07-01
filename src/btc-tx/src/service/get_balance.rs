@@ -1,6 +1,8 @@
-use ic_cdk::{bitcoin_canister::{bitcoin_get_balance, GetBalanceRequest}, update};
+use ic_cdk::{
+    bitcoin_canister::{bitcoin_get_balance, GetBalanceRequest},
+    update,
+};
 
-//use ic_cdk::{api::management_canister::bitcoin::{bitcoin_get_balance, GetBalanceRequest}, update};
 use crate::BTC_CONTEXT;
 
 #[update]
@@ -11,7 +13,9 @@ pub async fn get_balance(address: String) -> u64 {
         address,
         network: ctx.network,
         min_confirmations: None,
-    }).await {
+    })
+    .await
+    {
         Ok(balance) => balance,
         Err(e) => {
             ic_cdk::println!("get_balance failed: {:?}", e);

@@ -1,5 +1,4 @@
 use ic_cdk::{
-    //api::management_canister::bitcoin::{bitcoin_get_utxos, GetUtxosRequest, GetUtxosResponse},
     bitcoin_canister::{bitcoin_get_utxos, GetUtxosRequest, GetUtxosResponse}, update
 };
 

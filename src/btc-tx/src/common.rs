@@ -8,118 +8,10 @@ use candid::Principal;
 //use ic_cdk::api::management_canister::bitcoin::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
 use tiny_keccak::{Hasher, Sha3};
 //use tiny_keccak::{Hasher, Sha3};
-use ic_cdk::bitcoin_canister::{bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo};
+use ic_cdk::bitcoin_canister::{
+    bitcoin_get_current_fee_percentiles, GetCurrentFeePercentilesRequest, Utxo,
+};
 use std::fmt;
-
-/*pub fn build_transaction_with_fee(
-    own_utxos: &[Utxo],
-    own_address: &Address,
-    dst_address: &Address,
-    amount: u64,
-    fee: u64,
-) -> Result<(Transaction, Vec<TxOut>), String> {
-    // Define a dust threshold below which change outputs are discarded.
-    const DUST_THRESHOLD: u64 = 1_000;
-
-    // --- Input Selection ---
-    // Greedily select UTXOs in reverse order (oldest last) until we cover amount + fee.
-    let mut utxos_to_spend = vec![];
-    let mut total_spent = 0;
-    for utxo in own_utxos.iter().rev() {
-        total_spent += utxo.value;
-        utxos_to_spend.push(utxo);
-        if total_spent >= amount + fee {
-            break;
-        }
-    }
-
-    // Abort if we can't cover the payment + fee.
-    if total_spent < amount + fee {
-        return Err(format!(
-            "Insufficient balance: {}, trying to transfer {} satoshi with fee {}",
-            total_spent, amount, fee
-        ));
-    }
-
-    // --- Build Inputs ---
-    let inputs: Vec<TxIn> = utxos_to_spend
-        .iter()
-        .map(|utxo| TxIn {
-            previous_output: OutPoint {
-                txid: Txid::from_raw_hash(Hash::from_slice(&utxo.outpoint.txid).unwrap()),
-                vout: utxo.outpoint.vout,
-            },
-            sequence: Sequence::MAX,
-            witness: Witness::new(),      // Will be filled in during signing
-            script_sig: ScriptBuf::new(), // Empty for SegWit or Taproot
-        })
-        .collect();
-
-    // --- Create Previous Outputs ---
-    // Each TxOut struct represents an output of a previous transaction that is now being spent.
-    // This information is needed later when signing transactions for P2TR and P2WPKH.
-    let prevouts = utxos_to_spend
-        .into_iter()
-        .map(|utxo| TxOut {
-            value: Amount::from_sat(utxo.value),
-            script_pubkey: own_address.script_pubkey(),
-        })
-        .collect();
-
-    // --- Build Outputs ---
-    // Primary output: send amount to destination.
-    let mut outputs = vec![TxOut {
-        script_pubkey: dst_address.script_pubkey(),
-        value: Amount::from_sat(amount),
-    }];
-
-    // Add a change output if the remainder is above the dust threshold.
-    let change = total_spent - amount - fee;
-    if change >= DUST_THRESHOLD {
-        outputs.push(TxOut {
-            script_pubkey: own_address.script_pubkey(),
-            value: Amount::from_sat(change),
-        });
-    }
-
-    // --- Assemble Transaction ---
-    Ok((
-        Transaction {
-            input: inputs,
-            output: outputs,
-            lock_time: LockTime::ZERO,
-            version: Version::TWO,
-        },
-        prevouts,
-    ))
-}
-*/
-
-/// Estimates a reasonable fee rate (in millisatoshis per byte) for sending a Bitcoin transaction.
-///
-/// This function fetches recent fee percentiles from the Bitcoin API and returns
-/// the median (50th percentile) fee rate, which is a reasonable default for timely inclusion.
-///
-/// - On **regtest** networks (without any coinbase mature transactions), no fee data is available,
-///   so the function falls back to a static default of `2000` millisatoshis/byte (i.e., `2 sat/vB`).
-///
-/// # Returns
-/// A fee rate in millisatoshis per byte (1000 msat = 1 satoshi).
-/*pub async fn get_fee_per_byte(ctx: &BitcoinContext) -> u64 {
-    let fee_percentiles = bitcoin_get_current_fee_percentiles(
-        &GetCurrentFeePercentilesRequest {
-            network: ctx.network, // already the correct type
-        },
-    )
-    .await
-    .unwrap();
-
-    if fee_percentiles.is_empty() {
-        2000 // fallback for regtest or empty state
-    } else {
-        fee_percentiles[fee_percentiles.len() / 2] // use median
-    }
-}*/
 
 /// Purpose field for a BIP-43/44-style derivation path.
 /// Determines the address type. Values are defined by:
@@ -233,16 +125,13 @@ impl fmt::Display for DerivationPath {
     }
 }
 
-
-pub fn generate_derivation_path(principal : &Principal)->Vec<Vec<u8>>{
-    let mut hash = [0u8;32];
+pub fn generate_derivation_path(principal: &Principal) -> Vec<Vec<u8>> {
+    let mut hash = [0u8; 32];
     let mut hasher = Sha3::v256();
     hasher.update(principal.as_slice());
     hasher.finalize(&mut hash);
     vec![hash.to_vec()]
-    
 }
-
 
 pub enum PrimaryOutput {
     /// Pay someone (spendable output).
@@ -290,8 +179,6 @@ pub fn select_one_utxo(own_utxos: &[Utxo], amount: u64, fee: u64) -> Result<Vec<
         amount, fee
     ))
 }
-
-
 
 pub fn build_transaction_with_fee(
     utxos_to_spend: Vec<&Utxo>,
