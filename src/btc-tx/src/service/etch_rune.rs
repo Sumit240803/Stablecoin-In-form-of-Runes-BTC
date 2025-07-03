@@ -3,12 +3,15 @@ use bitcoin::{
     secp256k1::{PublicKey, Secp256k1},
     Address, XOnlyPublicKey,
 };
+use candid::CandidType;
 use ic_cdk::{
     bitcoin_canister::{
         bitcoin_get_utxos, bitcoin_send_transaction, GetUtxosRequest, SendTransactionRequest,
     },
     trap, update,
 };
+use serde::{Deserialize, Serialize};
+
 
 use crate::{
     common::{get_fee_per_byte, DerivationPath, PrimaryOutput},
@@ -17,22 +20,29 @@ use crate::{
     schnorr_api::{get_schnorr_public_key, schnorr_sign},
     BTC_CONTEXT,
 };
-
+#[derive(Debug, Clone, Serialize, Deserialize, CandidType)]
+pub struct RuneArgument {
+    name: String,
+    divisibility: u8,
+    premine: u128,
+    symbol: Option<String>, // Use String instead of char for Candid compatibility
+    turbo: bool
+}
 #[update]
-pub async fn etch_rune(name: String) -> String {
+pub async fn etch_rune(args: RuneArgument) -> String {
     let ctx = BTC_CONTEXT.with(|ctx| ctx.get());
 
     // Validate rune name according to protocol rules.
     // Runes use strict naming conventions for consistency.
-    if name.is_empty() {
+    if args.name.is_empty() {
         trap("Rune name cannot be empty");
     }
 
-    if name.len() > 28 {
+    if args.name.len() > 28 {
         trap("Rune name cannot exceed 28 characters");
     }
 
-    if !name.chars().all(|c| c.is_ascii_uppercase()) {
+    if !args.name.chars().all(|c| c.is_ascii_uppercase()) {
         trap("Rune name must contain only uppercase letters A-Z");
     }
 
@@ -61,12 +71,12 @@ pub async fn etch_rune(name: String) -> String {
     // Create the rune etching configuration with fixed parameters.
     // This defines all the token properties that will be permanently recorded.
     let etching = Etching {
-        divisibility: 0,    // No decimal places (whole units only)
-        premine: 1_000_000, // Mint 1M units to the etcher (fixed supply)
-        rune_name: name.clone(),
-        symbol: Some('🪙'), // Unicode coin symbol for display
+        divisibility: args.divisibility,    // No decimal places (whole units only)
+        premine: args.premine, // Mint 1M units to the etcher (fixed supply)
+        rune_name: args.name.clone(),
+        symbol: args.symbol.as_ref().and_then(|s| s.chars().next()), // Convert Option<String> to Option<char>
         terms: None,        // No open minting allowed
-        turbo: false,       // Standard etching mode
+        turbo: args.turbo,       // Standard etching mode
         spacers: 0,         // No visual spacers in the name
     };
 
