@@ -39,9 +39,16 @@ type get_block_headers_response = record {
   tip_height : block_height;
   block_headers : vec block_header;
 };
+type rune_argument = record {
+  name: text;
+  divisibility: nat8;
+  premine: nat;
+  symbol: opt text;
+  turbo: bool;
+};
 
 service : (network) -> {
-  "etch_rune" : (ticker: text) -> (transaction_id);
+  "etch_rune" : (rune_argument) -> (transaction_id);
 
   "get_p2pkh_address" : () -> (bitcoin_address);
 
