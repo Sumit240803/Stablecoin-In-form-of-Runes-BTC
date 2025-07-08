@@ -1,5 +1,7 @@
 use bitcoin::{opcodes::all::{OP_PUSHNUM_13, OP_RETURN}, script::{Builder, PushBytesBuf}, ScriptBuf};
+use candid::CandidType;
 use leb128::write;
+use serde::{Deserialize, Serialize};
 
 
 
@@ -33,6 +35,7 @@ enum Tag {
     Symbol = 5,
     #[allow(dead_code)]
     Nop = 127,
+    Edict = 7
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,6 +99,13 @@ pub struct Etching {
     pub terms: Option<Terms>,
     pub turbo: bool,
     pub spacers: u32,
+    pub edicts: Option<Vec<Edict>>,
+}
+
+#[derive(Debug,Clone,Deserialize,CandidType,Serialize)]
+pub struct Edict{
+    pub amount: u128, // Amount to mint,
+    pub output : u32
 }
 pub struct Terms {
     pub amount: Option<u128>,               // Amount per mint
@@ -144,6 +154,14 @@ pub fn build_etching_script(etching : &Etching)->Result<ScriptBuf,String>{
     if etching.premine > 0 {
         payload.extend_from_slice(&encode_leb128(Tag::Premine as u64));
         payload.extend_from_slice(&encode_leb128(etching.premine as u64));
+    }
+    if let Some(edicts) = &etching.edicts {
+        for edict in edicts{
+            payload.extend_from_slice(&encode_leb128(Tag::Edict as u64));
+            payload.extend_from_slice(&encode_leb128(0 ));
+            payload.extend_from_slice(&encode_leb128(edict.amount as u64));
+            payload.extend_from_slice(&encode_leb128(edict.output as u64));
+        }
     }
 
     // Add mint terms if present
