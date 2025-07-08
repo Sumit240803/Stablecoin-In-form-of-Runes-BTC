@@ -158,7 +158,7 @@ pub fn build_etching_script(etching : &Etching)->Result<ScriptBuf,String>{
     if let Some(edicts) = &etching.edicts {
         for edict in edicts{
             payload.extend_from_slice(&encode_leb128(Tag::Edict as u64));
-            payload.extend_from_slice(&encode_leb128(0 ));
+            
             payload.extend_from_slice(&encode_leb128(edict.amount as u64));
             payload.extend_from_slice(&encode_leb128(edict.output as u64));
         }
