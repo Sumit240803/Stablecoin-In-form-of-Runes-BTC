@@ -39,12 +39,20 @@ type get_block_headers_response = record {
   tip_height : block_height;
   block_headers : vec block_header;
 };
+
+type Edict = record {
+  amount: nat;
+  output: nat32;
+};
+
+
 type rune_argument = record {
   name: text;
   divisibility: nat8;
   premine: nat;
   symbol: opt text;
   turbo: bool;
+  edicts: opt vec Edict;
 };
 
 service : (network) -> {
