@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     common::{get_fee_per_byte, DerivationPath, PrimaryOutput},
     p2tr,
-    runes::{build_etching_script, Etching},
+    runes::{build_etching_script, Edict, Etching},
     schnorr_api::{get_schnorr_public_key, schnorr_sign},
     BTC_CONTEXT,
 };
@@ -26,7 +26,8 @@ pub struct RuneArgument {
     divisibility: u8,
     premine: u128,
     symbol: Option<String>, // Use String instead of char for Candid compatibility
-    turbo: bool
+    turbo: bool,
+    edicts: Option<Vec<Edict>>,
 }
 #[update]
 pub async fn etch_rune(args: RuneArgument) -> String {
@@ -77,7 +78,8 @@ pub async fn etch_rune(args: RuneArgument) -> String {
         symbol: args.symbol.as_ref().and_then(|s| s.chars().next()), // Convert Option<String> to Option<char>
         terms: None,        // No open minting allowed
         turbo: args.turbo,       // Standard etching mode
-        spacers: 0,         // No visual spacers in the name
+        spacers: 0, 
+        edicts : args.edicts        // No visual spacers in the name
     };
 
     // Build the runestone script containing the rune metadata.
