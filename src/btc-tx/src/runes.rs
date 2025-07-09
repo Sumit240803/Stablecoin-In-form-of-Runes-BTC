@@ -155,45 +155,58 @@ pub fn build_etching_script(etching : &Etching)->Result<ScriptBuf,String>{
         payload.extend_from_slice(&encode_leb128(Tag::Premine as u64));
         payload.extend_from_slice(&encode_leb128(etching.premine as u64));
     }
-    if let Some(edicts) = &etching.edicts {
-        for edict in edicts{
-            payload.extend_from_slice(&encode_leb128(Tag::Edict as u64));
-            
-            payload.extend_from_slice(&encode_leb128(edict.amount as u64));
-            payload.extend_from_slice(&encode_leb128(edict.output as u64));
-        }
-    }
 
-    // Add mint terms if present
-    if let Some(terms) = &etching.terms {
-        if let Some(amount) = terms.amount {
-            payload.extend_from_slice(&encode_leb128(Tag::Amount as u64));
-            payload.extend_from_slice(&encode_leb128(amount as u64));
-        }
-        if let Some(cap) = terms.cap {
-            payload.extend_from_slice(&encode_leb128(Tag::Cap as u64));
-            payload.extend_from_slice(&encode_leb128(cap as u64));
-        }
-        if let Some(start) = terms.height.0 {
-            payload.extend_from_slice(&encode_leb128(Tag::HeightStart as u64));
-            payload.extend_from_slice(&encode_leb128(start as u64));
-        }
-        if let Some(end) = terms.height.1 {
-            payload.extend_from_slice(&encode_leb128(Tag::HeightEnd as u64));
-            payload.extend_from_slice(&encode_leb128(end as u64));
-        }
-        if let Some(start) = terms.offset.0 {
-            payload.extend_from_slice(&encode_leb128(Tag::OffsetStart as u64));
-            payload.extend_from_slice(&encode_leb128(start as u64));
-        }
-        if let Some(end) = terms.offset.1 {
-            payload.extend_from_slice(&encode_leb128(Tag::OffsetEnd as u64));
-            payload.extend_from_slice(&encode_leb128(end as u64));
-        }
-    }let mut builder = Builder::new().push_opcode(OP_RETURN);
+    // Tag 0: Body marker
+    payload.extend_from_slice(&encode_leb128(0));
+
+   
+
+
+if let Some(terms) = &etching.terms {
+    if terms.amount.is_some() {
+        payload.extend_from_slice(&encode_leb128(Tag::Amount as u64));
+        payload.extend_from_slice(&encode_leb128(terms.amount.unwrap() as u64));
+    }
+    if terms.cap.is_some() {
+        payload.extend_from_slice(&encode_leb128(Tag::Cap as u64));
+        payload.extend_from_slice(&encode_leb128(terms.cap.unwrap() as u64));
+    }
+    if let Some(start) = terms.height.0 {
+        payload.extend_from_slice(&encode_leb128(Tag::HeightStart as u64));
+        payload.extend_from_slice(&encode_leb128(start));
+    }
+    if let Some(end) = terms.height.1 {
+        payload.extend_from_slice(&encode_leb128(Tag::HeightEnd as u64));
+        payload.extend_from_slice(&encode_leb128(end));
+    }
+    if let Some(start) = terms.offset.0 {
+        payload.extend_from_slice(&encode_leb128(Tag::OffsetStart as u64));
+        payload.extend_from_slice(&encode_leb128(start));
+    }
+    if let Some(end) = terms.offset.1 {
+        payload.extend_from_slice(&encode_leb128(Tag::OffsetEnd as u64));
+        payload.extend_from_slice(&encode_leb128(end));
+    }
+}
+
+
+// 4. Place all edicts after the body marker
+if let Some(edicts) = &etching.edicts {
+    for edict in edicts {
+        payload.extend_from_slice(&encode_leb128(0));
+        payload.extend_from_slice(&encode_leb128(0));
+        payload.extend_from_slice(&encode_leb128(edict.amount as u64));
+        payload.extend_from_slice(&encode_leb128(edict.output as u64));
+    }
+}
+let mut builder = Builder::new().push_opcode(OP_RETURN);
 
     // Add OP_13 marker
     builder = builder.push_opcode(OP_PUSHNUM_13);
+    ic_cdk::println!("Final payload bytes: {:?}", payload);
+    for (i, byte) in payload.iter().enumerate() {
+    ic_cdk::println!("{:02}: {}", i, byte);
+}
 
     // Add the entire payload as a single data push.
     // Critical: All runestone data must be in one push after OP_13,
