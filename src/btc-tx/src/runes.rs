@@ -35,7 +35,7 @@ enum Tag {
     Symbol = 5,
     #[allow(dead_code)]
     Nop = 127,
-    Edict = 7
+
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
