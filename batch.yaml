@@ -1,0 +1,16 @@
+mode: separate-outputs
+inscriptions:
+  - file: dummy.txt
+    metadata:
+      content-type: text/plain
+
+etching:
+  supply: 100000
+  turbo: true
+  rune: WNTWGAZQWZJFA
+  symbol: O
+  divisibility: 6
+  premine: 1000
+  terms:
+    amount: 1000
+    cap: 99
